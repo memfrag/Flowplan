@@ -1,0 +1,21 @@
+//
+//  Copyright © 2026 Apparata AB. All rights reserved.
+//
+
+import SwiftUI
+import Sparkle
+
+/// Adds a "Check for Updates…" item to the app menu, driven by Sparkle.
+struct CheckForUpdatesCommand: Commands {
+
+    let updater: SPUUpdater
+
+    var body: some Commands {
+        CommandGroup(after: .appInfo) {
+            Button("Check for Updates…") {
+                updater.checkForUpdates()
+            }
+            .disabled(!updater.canCheckForUpdates)
+        }
+    }
+}
