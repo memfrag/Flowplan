@@ -65,6 +65,8 @@ struct TaskCommands: Commands {
                 .keyboardShortcut("1", modifiers: .command)
             Button("List View") { viewModel?.viewMode = .list }
                 .keyboardShortcut("2", modifiers: .command)
+            Button("Board View") { viewModel?.viewMode = .board }
+                .keyboardShortcut("3", modifiers: .command)
 
             Divider()
 

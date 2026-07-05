@@ -58,13 +58,13 @@ struct Sidebar: View {
                 NavigationLink(value: SidebarSelection.mode(.list)) {
                     Label("List View", systemImage: PlanViewMode.list.systemImage)
                 }
-                Label("Board View", systemImage: "rectangle.split.3x1")
-                    .foregroundStyle(.tertiary)
-                    .help("Coming later")
+                NavigationLink(value: SidebarSelection.mode(.board)) {
+                    Label("Board View", systemImage: PlanViewMode.board.systemImage)
+                }
             }
 
             Section("Focus") {
-                focusRow(.backlog, title: "Backlog")
+                focusRow(.backlog, title: "Blocked")
                 focusRow(.readyToStart, title: "Ready")
                 focusRow(.inProgress, title: "In Progress")
                 focusRow(.done, title: "Done")
@@ -135,6 +135,7 @@ struct Sidebar: View {
                 switch viewModel.viewMode {
                 case .graph: GraphCanvasView(viewModel: viewModel)
                 case .list: PlanListView(viewModel: viewModel)
+                case .board: PlanBoardView(viewModel: viewModel)
                 }
             }
         }

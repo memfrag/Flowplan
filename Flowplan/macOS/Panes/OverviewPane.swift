@@ -21,7 +21,7 @@ struct OverviewPane: View {
     private let tiles: [(state: TaskDisplayState, label: String)] = [
         (.readyToStart, "Ready"),
         (.inProgress, "In Progress"),
-        (.backlog, "Backlog"),
+        (.backlog, "Blocked"),
         (.done, "Done"),
         (.closed, "Closed")
     ]

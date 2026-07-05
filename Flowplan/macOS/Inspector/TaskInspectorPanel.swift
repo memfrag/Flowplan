@@ -71,7 +71,10 @@ struct TaskInspectorPanel: View {
 
                 GridRow {
                     InspectorLabel("Progress")
+                    // A Blocked task's state is derived from its dependencies — it can't be changed
+                    // manually until its blockers are Done (see the explanation below).
                     progressPicker(task)
+                        .disabled(state == .backlog)
                 }
 
                 GridRow {

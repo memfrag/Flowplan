@@ -20,7 +20,7 @@ nonisolated public enum TaskDisplayState: String, Codable, CaseIterable, Sendabl
 
     public var description: String {
         switch self {
-        case .backlog: "Backlog"
+        case .backlog: "Blocked"
         case .readyToStart: "Ready to Start"
         case .inProgress: "In Progress"
         case .done: "Done"

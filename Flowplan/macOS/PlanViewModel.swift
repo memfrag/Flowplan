@@ -9,11 +9,13 @@ import Observation
 public enum PlanViewMode: String, CaseIterable, Sendable {
     case graph
     case list
+    case board
 
     var title: String {
         switch self {
         case .graph: "Graph View"
         case .list: "List View"
+        case .board: "Board View"
         }
     }
 
@@ -21,6 +23,7 @@ public enum PlanViewMode: String, CaseIterable, Sendable {
         switch self {
         case .graph: "point.3.connected.trianglepath.dotted"
         case .list: "list.bullet"
+        case .board: "rectangle.split.3x1"
         }
     }
 }
@@ -322,14 +325,20 @@ public final class PlanViewModel {
     public func start(_ task: PlanTask) {
         guard let store else { return }
         guard displayState(of: task) == .readyToStart else {
-            let names = blockers(of: task).map { "• \($0.title)" }.joined(separator: "\n")
-            activeAlert = PlanAlert(
-                title: "This task is blocked",
-                message: "Finish all dependencies before starting it.\n\n\(names)"
-            )
+            presentBlockedAlert(for: task)
             return
         }
         store.setProgress(.inProgress, for: task)
+    }
+
+    /// Explains why a blocked (Backlog) task can't be started or made Ready — it still has unfinished
+    /// dependencies.
+    private func presentBlockedAlert(for task: PlanTask) {
+        let names = blockers(of: task).map { "• \($0.title)" }.joined(separator: "\n")
+        activeAlert = PlanAlert(
+            title: "This task is blocked",
+            message: "Finish all dependencies before starting it.\n\n\(names)"
+        )
     }
 
     /// Marks a task Done and shows a toast if doing so unlocked any dependents (spec §10.4).
@@ -400,6 +409,42 @@ public final class PlanViewModel {
         } catch {
             activeAlert = PlanAlert(title: "Cannot create dependency", message: error.localizedDescription)
         }
+    }
+
+    // MARK: - Board
+
+    /// Applies the state change implied by dropping `task` into the board column for `target`
+    /// (spec §13). Returns `false` if the drop is not allowed (e.g. Backlog is derived, or the task
+    /// is still blocked), in which case the board should leave the card where it was.
+    @discardableResult
+    public func moveTask(_ task: PlanTask, toBoardColumn target: TaskDisplayState) -> Bool {
+        switch target {
+        case .backlog:
+            // Backlog is a derived state — a task lands there on its own when it has unfinished
+            // dependencies. It is never a direct drop target.
+            return false
+        case .readyToStart:
+            // "Ready" is derived from having all dependencies resolved — it can't be forced. If the
+            // task is still blocked, explain that instead of silently doing nothing.
+            if displayState(of: task) == .backlog {
+                presentBlockedAlert(for: task)
+                return false
+            }
+            setProgress(.notStarted, for: task)
+        case .inProgress:
+            // Allowed from Ready (or when otherwise unblocked); blocked when the task still has
+            // unfinished dependencies. Reuse `start`'s guard, which surfaces the blocked alert.
+            if displayState(of: task) == .backlog {
+                start(task)
+                return false
+            }
+            setProgress(.inProgress, for: task)
+        case .done:
+            markDone(task)
+        case .closed:
+            close(task)
+        }
+        return true
     }
 
     // MARK: - Layout

@@ -42,7 +42,7 @@ extension PlanDTO {
 
         appendSection("Ready to Start", state: .readyToStart)
         appendSection("In Progress", state: .inProgress)
-        appendSection("Backlog", state: .backlog, includeBlockers: true)
+        appendSection("Blocked", state: .backlog, includeBlockers: true)
         appendSection("Done", state: .done)
 
         return lines.joined(separator: "\n")
