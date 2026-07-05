@@ -31,11 +31,20 @@ struct TaskCommands: Commands {
         }
 
         CommandMenu("Task") {
-            Button("Start") { withSelected { $0.start($1) } }
-                .keyboardShortcut(.space, modifiers: [])
-            Button("Mark Done") { withSelected { $0.markDone($1) } }
-                .keyboardShortcut(.return, modifiers: .command)
-            Button("Reopen") { withSelected { $0.reopen($1) } }
+            Button("Start") {
+                if isMultiSelection { viewModel?.setProgressForSelected(.inProgress) }
+                else { withSelected { $0.start($1) } }
+            }
+            .keyboardShortcut(.space, modifiers: [])
+            Button("Mark Done") {
+                if isMultiSelection { viewModel?.setProgressForSelected(.done) }
+                else { withSelected { $0.markDone($1) } }
+            }
+            .keyboardShortcut(.return, modifiers: .command)
+            Button("Reopen") {
+                if isMultiSelection { viewModel?.setProgressForSelected(.notStarted) }
+                else { withSelected { $0.reopen($1) } }
+            }
 
             Divider()
 
@@ -71,6 +80,10 @@ struct TaskCommands: Commands {
             Button("Clear Selection") { viewModel?.clearSelection() }
                 .keyboardShortcut(.escape, modifiers: [])
         }
+    }
+
+    private var isMultiSelection: Bool {
+        (viewModel?.selectedTaskIDs.count ?? 0) > 1
     }
 
     private func withSelected(_ action: (PlanViewModel, PlanTask) -> Void) {

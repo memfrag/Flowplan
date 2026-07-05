@@ -56,7 +56,16 @@ public final class PlanViewModel {
     public var viewMode: PlanViewMode = .graph {
         didSet { showOverview = false }
     }
-    public var selectedTaskID: UUID?
+    /// The set of currently selected tasks. Multi-selection is driven by shift-clicking cards or
+    /// shift-dragging a marquee on the canvas.
+    public var selectedTaskIDs: Set<UUID> = []
+
+    /// The sole selected task, when exactly one is selected — used by single-task UI (the inspector,
+    /// the list's selection binding, "Edit Title"). `nil` when zero or multiple tasks are selected.
+    public var selectedTaskID: UUID? {
+        selectedTaskIDs.count == 1 ? selectedTaskIDs.first : nil
+    }
+
     public var selectedDependencyID: UUID?
     public var editingTaskID: UUID?
     public var searchText: String = ""
@@ -90,6 +99,15 @@ public final class PlanViewModel {
     public var selectedTask: PlanTask? {
         guard let selectedTaskID else { return nil }
         return plan?.task(id: selectedTaskID)
+    }
+
+    /// Every currently selected task, in the plan's stable order.
+    public var selectedTasks: [PlanTask] {
+        tasks.filter { selectedTaskIDs.contains($0.id) }
+    }
+
+    public func isSelected(_ taskID: UUID) -> Bool {
+        selectedTaskIDs.contains(taskID)
     }
 
     public func task(id: UUID) -> PlanTask? {
@@ -189,14 +207,31 @@ public final class PlanViewModel {
 
     // MARK: - Selection
 
+    /// Replaces the selection with a single task (or clears it when `nil`).
     public func selectTask(_ taskID: UUID?) {
-        selectedTaskID = taskID
+        selectedTaskIDs = taskID.map { [$0] } ?? []
+        selectedDependencyID = nil
+    }
+
+    /// Replaces the selection with an explicit set of tasks (used by the marquee).
+    public func setSelectedTasks(_ ids: Set<UUID>) {
+        selectedTaskIDs = ids
+        if !ids.isEmpty { selectedDependencyID = nil }
+    }
+
+    /// Adds or removes a task from the selection (shift-click).
+    public func toggleSelection(_ taskID: UUID) {
+        if selectedTaskIDs.contains(taskID) {
+            selectedTaskIDs.remove(taskID)
+        } else {
+            selectedTaskIDs.insert(taskID)
+        }
         selectedDependencyID = nil
     }
 
     public func selectDependency(_ dependencyID: UUID?) {
         selectedDependencyID = dependencyID
-        selectedTaskID = nil
+        selectedTaskIDs = []
     }
 
     /// Shows the Overview dashboard and clears any active focus filter.
@@ -218,7 +253,7 @@ public final class PlanViewModel {
     }
 
     public func clearSelection() {
-        selectedTaskID = nil
+        selectedTaskIDs = []
         selectedDependencyID = nil
         editingTaskID = nil
     }
@@ -243,13 +278,37 @@ public final class PlanViewModel {
 
     public func deleteSelectedTaskOrDependency() {
         guard let store else { return }
-        if let task = selectedTask {
-            store.deleteTask(task)
+        let tasksToDelete = selectedTasks
+        if !tasksToDelete.isEmpty {
+            for task in tasksToDelete {
+                store.deleteTask(task)
+            }
             clearSelection()
         } else if let dependencyID = selectedDependencyID,
                   let dependency = plan?.dependencies.first(where: { $0.id == dependencyID }) {
             store.deleteDependency(dependency)
             clearSelection()
+        }
+    }
+
+    // MARK: - Bulk task actions
+
+    /// Applies a progress value directly to every selected task (used by bulk state changes). Unlike
+    /// ``start(_:)`` this does not enforce the "blocked" guard — the user is acting deliberately on a
+    /// whole selection, so we set the state and let the graph re-derive display states.
+    public func setProgressForSelected(_ progress: TaskProgress) {
+        guard let store else { return }
+        let targets = selectedTasks
+        guard !targets.isEmpty else { return }
+        let unlocked: Set<UUID> = progress == .done
+            ? Set(targets.flatMap { unlockedByCompleting($0).map(\.id) }).subtracting(selectedTaskIDs)
+            : []
+        for task in targets {
+            store.setProgress(progress, for: task)
+        }
+        if progress == .done, !unlocked.isEmpty {
+            let count = unlocked.count
+            showToast("\(count) task\(count == 1 ? " is" : "s are") now ready to start.")
         }
     }
 

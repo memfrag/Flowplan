@@ -17,12 +17,24 @@ struct TaskInspectorPanel: View {
                 content(for: task)
                     .padding(.vertical, 8)
             }
+        } else if viewModel.selectedTaskIDs.count > 1 {
+            multiSelection
         } else {
             ContentUnavailableView(
                 "No Selection",
                 systemImage: "sidebar.right",
                 description: Text("Select a task to see its details and dependencies.")
             )
+        }
+    }
+
+    /// Shown when several tasks are selected at once (shift-drag / shift-click). Detailed editing is
+    /// single-task; bulk state changes and deletion live in the canvas context menu and Task menu.
+    private var multiSelection: some View {
+        ContentUnavailableView {
+            Label("\(viewModel.selectedTaskIDs.count) Tasks Selected", systemImage: "square.stack.3d.up")
+        } description: {
+            Text("Right-click a selected task to change status or delete them together, or drag to move them all at once.")
         }
     }
 

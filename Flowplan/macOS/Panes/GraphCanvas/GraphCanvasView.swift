@@ -3,10 +3,11 @@
 //
 
 import SwiftUI
+import AppKit
 
 /// The central graph canvas: positioned task cards over a dotted grid, with dependency edges drawn
 /// behind them. Supports pan (drag or trackpad scroll), zoom, card dragging,
-/// drag-to-create-dependency, and selection.
+/// drag-to-create-dependency, marquee multi-selection, and selection.
 struct GraphCanvasView: View {
 
     @Bindable var viewModel: PlanViewModel
@@ -26,8 +27,16 @@ struct GraphCanvasView: View {
 
     // Transient card-drag state. During a drag we keep the translation here and apply it visually,
     // committing to the model (SwiftData) only on drop — so we don't write `task.position` every frame.
-    @State private var draggingTaskID: UUID?
+    // A drag started on a card that is part of a multi-selection moves the whole selection at once,
+    // so this is a set rather than a single id.
+    @State private var draggingTaskIDs: Set<UUID> = []
     @State private var dragTranslation: CGSize = .zero
+
+    // Marquee (shift-drag) selection state, in canvas content coordinates.
+    @State private var marqueeRect: CGRect?
+    @State private var marqueeBaseSelection: Set<UUID> = []
+    // Baseline for an in-progress background pan started inside the content area.
+    @State private var contentPanBaseOffset: CGSize?
 
     // Latest pointer location in canvas content coordinates, used to place a right-click "New Task".
     @State private var hoverLocation: CGPoint?
@@ -92,6 +101,13 @@ struct GraphCanvasView: View {
         let pending = pendingLink()
 
         return ZStack {
+            // A transparent hit layer behind everything: empty-canvas drags land here and either pan
+            // (plain drag) or draw a marquee selection (shift-drag), in canvas content coordinates.
+            Color.white.opacity(0.001)
+                .contentShape(Rectangle())
+                .onTapGesture { viewModel.clearSelection() }
+                .gesture(backgroundDragGesture(snapshot: snapshot))
+
             DependencyEdgesView(
                 edges: edges,
                 pendingLink: pending,
@@ -105,6 +121,8 @@ struct GraphCanvasView: View {
 
             // Connector delete hotspots sit on top of the cards so they are always hoverable.
             edgeSelectionDots(snapshot: snapshot)
+
+            marqueeOverlay
         }
         .frame(width: size.width, height: size.height)
         // Track the pointer in content coordinates so a right-click "New Task" lands where clicked.
@@ -218,7 +236,7 @@ struct GraphCanvasView: View {
             task: task,
             number: snapshot.number(of: task),
             state: state,
-            isSelected: viewModel.selectedTaskID == task.id,
+            isSelected: viewModel.isSelected(task.id),
             isDimmed: shouldDim(task, snapshot: snapshot),
             isEditing: isEditing,
             linkTarget: highlight,
@@ -256,6 +274,37 @@ struct GraphCanvasView: View {
 
     @ViewBuilder
     private func cardContextMenu(for task: PlanTask, state: TaskDisplayState) -> some View {
+        // When this card is part of a multi-selection, act on the whole selection instead.
+        if viewModel.selectedTaskIDs.count > 1, viewModel.isSelected(task.id) {
+            multiSelectionContextMenu()
+        } else {
+            singleCardContextMenu(for: task, state: state)
+        }
+    }
+
+    @ViewBuilder
+    private func multiSelectionContextMenu() -> some View {
+        let count = viewModel.selectedTaskIDs.count
+        Section("\(count) tasks selected") {
+            Button("Mark In Progress") { viewModel.setProgressForSelected(.inProgress) }
+            Button("Mark Done") { viewModel.setProgressForSelected(.done) }
+            Button("Mark Not Started") { viewModel.setProgressForSelected(.notStarted) }
+            Button("Close") { viewModel.setProgressForSelected(.closed) }
+        }
+
+        Divider()
+
+        Button("Auto Layout") { viewModel.autoLayout() }
+
+        Divider()
+
+        Button("Delete \(count) Tasks", role: .destructive) {
+            viewModel.deleteSelectedTaskOrDependency()
+        }
+    }
+
+    @ViewBuilder
+    private func singleCardContextMenu(for task: PlanTask, state: TaskDisplayState) -> some View {
         Button("Rename") {
             viewModel.selectTask(task.id)
             beginEdit(task)
@@ -297,23 +346,108 @@ struct GraphCanvasView: View {
     private func cardDragGesture(for task: PlanTask) -> some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(GraphMetrics.canvasSpaceName))
             .onChanged { value in
-                // Fires on press (translation == .zero) → select instantly; move only once dragged.
-                if viewModel.selectedTaskID != task.id { viewModel.selectTask(task.id) }
-                guard value.translation.width != 0 || value.translation.height != 0 else { return }
-                draggingTaskID = task.id
+                let moving = value.translation.width != 0 || value.translation.height != 0
+                if !moving {
+                    // Press with no movement yet: update the selection.
+                    if NSEvent.modifierFlags.contains(.shift) {
+                        viewModel.toggleSelection(task.id)
+                    } else if !viewModel.isSelected(task.id) {
+                        // Plain click on an unselected card → single-select. A plain press on a card
+                        // that's already part of a multi-selection keeps the selection, so it can be
+                        // dragged as a group.
+                        viewModel.selectTask(task.id)
+                    }
+                    return
+                }
+                // Movement: begin (or continue) a drag. Decide once which cards move — the whole
+                // selection if this card is part of a multi-selection, otherwise just this card.
+                if draggingTaskIDs.isEmpty {
+                    if viewModel.isSelected(task.id), viewModel.selectedTaskIDs.count > 1 {
+                        draggingTaskIDs = viewModel.selectedTaskIDs
+                    } else {
+                        if !viewModel.isSelected(task.id) { viewModel.selectTask(task.id) }
+                        draggingTaskIDs = [task.id]
+                    }
+                }
                 dragTranslation = value.translation
             }
             .onEnded { value in
-                if draggingTaskID == task.id {
-                    let base = task.position ?? value.startLocation
-                    viewModel.moveTask(task, to: CGPoint(
+                for id in draggingTaskIDs {
+                    guard let moved = viewModel.task(id: id) else { continue }
+                    let base = moved.position ?? value.startLocation
+                    viewModel.moveTask(moved, to: CGPoint(
                         x: base.x + value.translation.width,
                         y: base.y + value.translation.height
                     ))
                 }
-                draggingTaskID = nil
+                draggingTaskIDs = []
                 dragTranslation = .zero
             }
+    }
+
+    /// Empty-canvas drag: shift-drag draws a marquee that selects the cards it covers; a plain drag
+    /// pans. Runs in canvas content coordinates so the marquee rectangle and card rects share a frame
+    /// (no manual zoom/offset math), while pan converts the content-space translation to screen space.
+    private func backgroundDragGesture(snapshot: PlanViewModel.RenderSnapshot) -> some Gesture {
+        DragGesture(coordinateSpace: .named(GraphMetrics.canvasSpaceName))
+            .onChanged { value in
+                if marqueeRect == nil && contentPanBaseOffset == nil {
+                    // First change: choose the mode based on whether shift is held.
+                    if NSEvent.modifierFlags.contains(.shift) {
+                        marqueeBaseSelection = viewModel.selectedTaskIDs
+                    } else {
+                        contentPanBaseOffset = viewModel.canvasOffset
+                    }
+                }
+
+                if let base = contentPanBaseOffset {
+                    viewModel.canvasOffset = CGSize(
+                        width: base.width + value.translation.width * viewModel.zoomScale,
+                        height: base.height + value.translation.height * viewModel.zoomScale
+                    )
+                    return
+                }
+
+                let rect = CGRect(
+                    x: min(value.startLocation.x, value.location.x),
+                    y: min(value.startLocation.y, value.location.y),
+                    width: abs(value.location.x - value.startLocation.x),
+                    height: abs(value.location.y - value.startLocation.y)
+                )
+                marqueeRect = rect
+                viewModel.setSelectedTasks(marqueeBaseSelection.union(tasksIntersecting(rect, snapshot: snapshot)))
+            }
+            .onEnded { _ in
+                marqueeRect = nil
+                marqueeBaseSelection = []
+                contentPanBaseOffset = nil
+            }
+    }
+
+    /// The tasks whose card rectangle intersects a content-space rectangle (used by the marquee).
+    private func tasksIntersecting(_ rect: CGRect, snapshot: PlanViewModel.RenderSnapshot) -> Set<UUID> {
+        var result: Set<UUID> = []
+        for task in snapshot.orderedTasks {
+            let p = effectivePosition(of: task)
+            let cardRect = CGRect(
+                x: p.x - cardSize.width / 2, y: p.y - cardSize.height / 2,
+                width: cardSize.width, height: cardSize.height
+            )
+            if cardRect.intersects(rect) { result.insert(task.id) }
+        }
+        return result
+    }
+
+    @ViewBuilder
+    private var marqueeOverlay: some View {
+        if let rect = marqueeRect {
+            Rectangle()
+                .fill(Color.accentColor.opacity(0.12))
+                .overlay(Rectangle().strokeBorder(Color.accentColor.opacity(0.8), lineWidth: 1))
+                .frame(width: rect.width, height: rect.height)
+                .position(x: rect.midX, y: rect.midY)
+                .allowsHitTesting(false)
+        }
     }
 
     private func linkDragGesture(from task: PlanTask) -> some Gesture {
@@ -379,7 +513,7 @@ struct GraphCanvasView: View {
     /// A task's canvas position, including any in-progress drag translation.
     private func effectivePosition(of task: PlanTask) -> CGPoint {
         let base = task.position ?? CGPoint(x: 200, y: 200)
-        guard task.id == draggingTaskID else { return base }
+        guard draggingTaskIDs.contains(task.id) else { return base }
         return CGPoint(x: base.x + dragTranslation.width, y: base.y + dragTranslation.height)
     }
 
@@ -399,14 +533,13 @@ struct GraphCanvasView: View {
 
     private func edgeGeometry(snapshot: PlanViewModel.RenderSnapshot) -> [DependencyEdgesView.Edge] {
         guard let plan = viewModel.plan else { return [] }
-        let selected = viewModel.selectedTaskID
         return plan.dependencies.compactMap { dependency in
             guard let from = snapshot.taskByID[dependency.prerequisiteTaskID],
                   let to = snapshot.taskByID[dependency.dependentTaskID] else { return nil }
             let fromP = effectivePosition(of: from)
             let toP = effectivePosition(of: to)
             let highlighted = viewModel.selectedDependencyID == dependency.id
-                || selected == from.id || selected == to.id
+                || viewModel.isSelected(from.id) || viewModel.isSelected(to.id)
             return DependencyEdgesView.Edge(
                 id: dependency.id,
                 start: CGPoint(x: fromP.x + cardSize.width / 2, y: fromP.y),
