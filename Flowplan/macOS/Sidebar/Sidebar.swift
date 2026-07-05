@@ -22,6 +22,7 @@ struct Sidebar: View {
                 .listStyle(.sidebar)
                 .frame(minWidth: 200, idealWidth: 220, maxWidth: 320)
                 .safeAreaInset(edge: .top, spacing: 0) { sidebarHeader }
+                .toolbar { sidebarToolbarContent }
         } detail: {
             detail
                 .inspector(isPresented: $isInspectorPresented) {
@@ -152,8 +153,7 @@ struct Sidebar: View {
     // MARK: - Toolbar
 
     @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-
+    private var sidebarToolbarContent: some ToolbarContent {
         ToolbarItem {
             Button {
                 openWindow(id: ProjectManagerWindow.windowID)
@@ -162,13 +162,17 @@ struct Sidebar: View {
             }
             .help("Manage projects and their details")
         }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
 
         ToolbarItemGroup(placement: .primaryAction) {
             Button {
                 viewModel.viewMode = .graph
                 _ = viewModel.createTask(at: CGPoint(x: 400, y: 300))
             } label: {
-                Label("New Task", systemImage: "plus")
+                Label("New Task", systemImage: "plus.rectangle")
             }
             .disabled(viewModel.plan == nil)
 
@@ -178,9 +182,17 @@ struct Sidebar: View {
                 Label("Auto Layout", systemImage: "wand.and.stars")
             }
             .disabled(viewModel.plan == nil || viewModel.viewMode != .graph || viewModel.showOverview)
+        }
 
+        ToolbarSpacer(.flexible)
+
+        ToolbarItemGroup(placement: .primaryAction) {
             zoomControls
+        }
 
+        ToolbarSpacer(.flexible)
+
+        ToolbarItemGroup(placement: .primaryAction) {
             Button {
                 isInspectorPresented.toggle()
             } label: {
@@ -194,7 +206,7 @@ struct Sidebar: View {
         if viewModel.viewMode == .graph && !viewModel.showOverview {
             Button { setZoom(viewModel.zoomScale - 0.1) } label: { Image(systemName: "minus.magnifyingglass") }
             Text("\(Int(viewModel.zoomScale * 100))%")
-                .font(.caption.monospacedDigit())
+                .font(.callout.monospacedDigit())
                 .frame(width: 42)
             Button { setZoom(viewModel.zoomScale + 0.1) } label: { Image(systemName: "plus.magnifyingglass") }
         }
