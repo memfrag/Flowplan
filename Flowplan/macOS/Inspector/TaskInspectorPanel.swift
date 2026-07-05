@@ -37,6 +37,11 @@ struct TaskInspectorPanel: View {
                 InspectorSectionHeader("Task")
 
                 GridRow {
+                    InspectorLabel("ID")
+                    InspectorTextValue("\(task.number)")
+                }
+
+                GridRow {
                     InspectorLabel("Title")
                     InspectorTextField(titleBinding(task))
                 }

@@ -35,6 +35,7 @@ public enum SeedData {
         var tasks: [PlanTask] = []
         for (index, spec) in specs.enumerated() {
             let task = PlanTask(
+                number: index + 1,
                 title: spec.title,
                 progress: spec.progress,
                 createdAt: baseDate.addingTimeInterval(Double(index)),
@@ -44,6 +45,7 @@ public enum SeedData {
             tasks.append(task)
         }
         plan.tasks = tasks
+        plan.nextTaskNumber = specs.count + 1
 
         let edges: [(String, String)] = [
             ("T1", "T2"), ("T1", "T3"), ("T2", "T3"), ("T2", "T4"),

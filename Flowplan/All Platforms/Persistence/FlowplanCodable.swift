@@ -20,10 +20,12 @@ nonisolated public struct PlanDTO: Codable, Sendable {
     public var icon: String? = nil
     public var summary: String? = nil
     public var repositoryURLs: [String]? = nil
+    public var nextTaskNumber: Int? = nil
 }
 
 nonisolated public struct TaskDTO: Codable, Sendable {
     public var id: UUID
+    public var number: Int? = nil
     public var title: String
     public var details: String? = nil
     public var notes: String
@@ -60,6 +62,7 @@ extension PlanDTO {
         self.icon = plan.icon
         self.summary = plan.summary.isEmpty ? nil : plan.summary
         self.repositoryURLs = plan.repositoryURLs.isEmpty ? nil : plan.repositoryURLs
+        self.nextTaskNumber = plan.nextTaskNumber
         self.tasks = plan.tasks
             .sorted { $0.createdAt < $1.createdAt }
             .map(TaskDTO.init(task:))
@@ -77,6 +80,7 @@ extension TaskDTO {
 
     public init(task: PlanTask) {
         self.id = task.id
+        self.number = task.number
         self.title = task.title
         self.details = task.details.isEmpty ? nil : task.details
         self.notes = task.notes
@@ -107,9 +111,26 @@ extension PlanDTO {
             createdAt: createdAt,
             updatedAt: updatedAt
         )
+        // Assign numbers from the DTO, backfilling any that are missing (older exports) by
+        // creation order so the plan's numbering stays stable and collision-free.
+        var counter = max(
+            nextTaskNumber ?? 0,
+            (tasks.compactMap(\.number).max() ?? 0) + 1
+        )
+        var numberByTaskID: [UUID: Int] = [:]
+        for dto in tasks.sorted(by: { $0.createdAt < $1.createdAt }) {
+            if let number = dto.number, number > 0 {
+                numberByTaskID[dto.id] = number
+            } else {
+                numberByTaskID[dto.id] = counter
+                counter += 1
+            }
+        }
+        plan.nextTaskNumber = max(counter, (numberByTaskID.values.max() ?? 0) + 1)
         plan.tasks = tasks.map { dto in
             PlanTask(
                 id: dto.id,
+                number: numberByTaskID[dto.id] ?? 0,
                 title: dto.title,
                 details: dto.details ?? "",
                 notes: dto.notes,

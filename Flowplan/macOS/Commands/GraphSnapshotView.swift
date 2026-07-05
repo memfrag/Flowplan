@@ -37,10 +37,10 @@ struct GraphSnapshotView: View {
                 frameRect: CGRect(origin: .zero, size: bounds.size)
             )
 
-            ForEach(Array(orderedTasks.enumerated()), id: \.element.id) { index, task in
+            ForEach(orderedTasks, id: \.id) { task in
                 TaskCardView(
                     task: task,
-                    number: index + 1,
+                    number: task.number,
                     state: graph.displayState(of: task.id),
                     isSelected: false,
                     isDimmed: false,

@@ -15,6 +15,11 @@ public final class PlanTask {
 
     @Attribute(.unique) public var id: UUID
 
+    /// A stable, per-plan display number (see ``Plan/nextTaskNumber``). Assigned once when the task
+    /// is created and never reused or changed — unlike ``id`` it is human-friendly (1, 2, 3, …) and
+    /// scoped to the owning plan. `0` means "not yet assigned" (backfilled on load).
+    public var number: Int = 0
+
     public var title: String
 
     /// A description of what the task entails (distinct from freeform ``notes``).
@@ -47,6 +52,7 @@ public final class PlanTask {
 
     public init(
         id: UUID = UUID(),
+        number: Int = 0,
         title: String,
         details: String = "",
         notes: String = "",
@@ -60,6 +66,7 @@ public final class PlanTask {
         updatedAt: Date = .now
     ) {
         self.id = id
+        self.number = number
         self.title = title
         self.details = details
         self.notes = notes

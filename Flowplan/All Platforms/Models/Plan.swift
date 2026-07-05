@@ -22,6 +22,10 @@ public final class Plan {
     /// Associated GitHub (or other) repository URLs.
     public var repositoryURLs: [String] = []
 
+    /// The next per-plan task number to hand out. Starts at 1 and only ever increases, so task
+    /// numbers are never reused even after tasks are deleted (see ``PlanTask/number``).
+    public var nextTaskNumber: Int = 1
+
     public var createdAt: Date
     public var updatedAt: Date
 
@@ -37,6 +41,7 @@ public final class Plan {
         icon: String = "folder",
         summary: String = "",
         repositoryURLs: [String] = [],
+        nextTaskNumber: Int = 1,
         createdAt: Date = .now,
         updatedAt: Date = .now,
         tasks: [PlanTask] = [],
@@ -47,6 +52,7 @@ public final class Plan {
         self.icon = icon
         self.summary = summary
         self.repositoryURLs = repositoryURLs
+        self.nextTaskNumber = nextTaskNumber
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.tasks = tasks

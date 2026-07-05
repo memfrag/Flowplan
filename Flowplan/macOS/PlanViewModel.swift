@@ -170,10 +170,10 @@ public final class PlanViewModel {
         var displayStateByID: [UUID: TaskDisplayState] = [:]
         var numberByID: [UUID: Int] = [:]
         taskByID.reserveCapacity(visible.count)
-        for (index, task) in visible.enumerated() {
+        for task in visible {
             taskByID[task.id] = task
             displayStateByID[task.id] = graph.displayState(of: task.id)
-            numberByID[task.id] = index + 1
+            numberByID[task.id] = task.number
         }
         return RenderSnapshot(
             orderedTasks: visible,

@@ -54,6 +54,12 @@ struct PlanListView: View {
 
     private func row(_ task: PlanTask) -> some View {
         HStack(spacing: 12) {
+            Text("\(task.number)")
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .frame(width: 32, alignment: .trailing)
+                .help("Task ID")
+
             Text(task.title)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -37,6 +37,27 @@ public final class PlanStore {
         save()
     }
 
+    /// Assigns stable numbers to any tasks that predate the numbering feature (or arrived via import
+    /// without one), and reconciles each plan's ``Plan/nextTaskNumber`` so future tasks never collide
+    /// with existing ones. Idempotent — safe to call on every launch.
+    public func backfillTaskNumbers() {
+        var didChange = false
+        for plan in allPlans() {
+            let unnumbered = plan.tasks.filter { $0.number <= 0 }
+            var counter = max(plan.nextTaskNumber, (plan.tasks.map(\.number).max() ?? 0) + 1)
+            for task in unnumbered.sorted(by: { $0.createdAt < $1.createdAt }) {
+                task.number = counter
+                counter += 1
+                didChange = true
+            }
+            if plan.nextTaskNumber < counter {
+                plan.nextTaskNumber = counter
+                didChange = true
+            }
+        }
+        if didChange { save() }
+    }
+
     @discardableResult
     public func createPlan(title: String = "Untitled Plan") -> Plan {
         let plan = Plan(title: title)
@@ -54,12 +75,19 @@ public final class PlanStore {
 
     @discardableResult
     public func createTask(in plan: Plan, title: String = "New Task", at position: CGPoint) -> PlanTask {
-        let task = PlanTask(title: title, position: position)
+        let task = PlanTask(number: nextTaskNumber(in: plan), title: title, position: position)
         task.plan = plan
         plan.tasks.append(task)
         plan.touch()
         save()
         return task
+    }
+
+    /// Claims the plan's next task number, advancing the counter so numbers are never reused.
+    private func nextTaskNumber(in plan: Plan) -> Int {
+        let number = plan.nextTaskNumber
+        plan.nextTaskNumber = number + 1
+        return number
     }
 
     /// Deletes a task and every dependency that references it (spec §10.6).
@@ -84,6 +112,7 @@ public final class PlanStore {
     @discardableResult
     public func duplicateTask(_ task: PlanTask) -> PlanTask {
         let copy = PlanTask(
+            number: task.plan.map(nextTaskNumber(in:)) ?? 0,
             title: task.title + " copy",
             notes: task.notes,
             progress: task.progress,
