@@ -29,6 +29,9 @@ struct GraphCanvasView: View {
     @State private var draggingTaskID: UUID?
     @State private var dragTranslation: CGSize = .zero
 
+    // Latest pointer location in canvas content coordinates, used to place a right-click "New Task".
+    @State private var hoverLocation: CGPoint?
+
     private let cardSize = GraphMetrics.cardSize
 
     var body: some View {
@@ -50,6 +53,7 @@ struct GraphCanvasView: View {
             .gesture(panGesture)
             .gesture(zoomGesture)
             .onTapGesture { viewModel.clearSelection() }
+            .contextMenu { canvasContextMenu }
             .overlay(alignment: .top) { toastOverlay }
             .overlay {
                 if snapshot.orderedTasks.isEmpty {
@@ -102,6 +106,33 @@ struct GraphCanvasView: View {
             edgeSelectionDots(snapshot: snapshot)
         }
         .frame(width: size.width, height: size.height)
+        // Track the pointer in content coordinates so a right-click "New Task" lands where clicked.
+        .onContinuousHover(coordinateSpace: .named(GraphMetrics.canvasSpaceName)) { phase in
+            if case .active(let location) = phase { hoverLocation = location }
+        }
+    }
+
+    @ViewBuilder
+    private var canvasContextMenu: some View {
+        Button {
+            _ = viewModel.createTask(at: hoverLocation ?? viewModel.lastViewportCenter)
+        } label: {
+            Label("New Task Here", systemImage: "plus")
+        }
+        .disabled(viewModel.plan == nil)
+
+        Divider()
+
+        Button {
+            viewModel.autoLayout()
+        } label: {
+            Label("Auto Layout", systemImage: "wand.and.stars")
+        }
+        Button {
+            viewModel.zoomScale = 1
+        } label: {
+            Label("Reset Zoom", systemImage: "1.magnifyingglass")
+        }
     }
 
     /// The region the edge Canvas must cover — always at least the content frame, expanded to

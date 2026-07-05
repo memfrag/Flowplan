@@ -23,16 +23,10 @@ struct TaskCardView: View {
     private var isBacklog: Bool { state == .backlog }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 7) {
-                Image(systemName: state.systemImage)
-                    .foregroundStyle(state.color)
-                    .font(.system(size: 12, weight: .semibold))
+        HStack(alignment: .top, spacing: 9) {
+            leadingColumn
 
-                Text("\(number)")
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.secondary)
-
+            VStack(alignment: .leading, spacing: 5) {
                 if isEditing {
                     TextField("Task title", text: $editingTitle, onCommit: onCommitEdit)
                         .textFieldStyle(.plain)
@@ -42,51 +36,21 @@ struct TaskCardView: View {
                 } else {
                     Text(task.title)
                         .font(.callout.weight(.semibold))
-                        .lineLimit(2)
+                        .lineLimit(4)
+                        .fixedSize(horizontal: false, vertical: true)
                         .foregroundStyle(isBacklog ? .secondary : .primary)
                 }
-                Spacer(minLength: 0)
-            }
 
-            HStack(spacing: 10) {
-                if let category = task.category, !category.isEmpty {
-                    Text(category)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
-                        .background(Capsule().fill(.quaternary))
-                }
-                Spacer(minLength: 0)
-                if !task.details.isEmpty {
-                    Label("description", systemImage: "text.alignleft")
-                        .labelStyle(.iconOnly)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                if !task.notes.isEmpty {
-                    Label("notes", systemImage: "text.bubble")
-                        .labelStyle(.iconOnly)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                if let estimate = task.estimate {
-                    HStack(spacing: 3) {
-                        Image(systemName: "clock")
-                        Text(estimate.displayText)
-                    }
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                }
-                if let priority = task.priority, priority == .high {
-                    Image(systemName: priority.systemImage)
-                        .font(.caption2)
-                        .foregroundStyle(priority.color)
+                Spacer(minLength: 2)
+
+                if hasBottomMetadata {
+                    bottomMetadata
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(10)
-        .frame(width: GraphMetrics.cardSize.width, height: GraphMetrics.cardSize.height, alignment: .leading)
+        .frame(width: GraphMetrics.cardSize.width, height: GraphMetrics.cardSize.height, alignment: .topLeading)
         .background {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(backgroundFill)
@@ -99,6 +63,65 @@ struct TaskCardView: View {
         // Only the selected card casts a shadow — avoids N offscreen shadow passes per frame while
         // dragging. Depth for the rest comes from the border.
         .shadow(color: .black.opacity(isSelected ? 0.18 : 0), radius: isSelected ? 8 : 0, y: isSelected ? 2 : 0)
+    }
+
+    /// The leading vertical column: state icon, number, then notes/description indicators.
+    private var leadingColumn: some View {
+        VStack(spacing: 5) {
+            Image(systemName: state.systemImage)
+                .foregroundStyle(state.color)
+                .font(.system(size: 14, weight: .semibold))
+
+            Text("\(number)")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+
+            if !task.details.isEmpty {
+                Image(systemName: "text.alignleft")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .help("Has a description")
+            }
+            if !task.notes.isEmpty {
+                Image(systemName: "text.bubble")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .help("Has notes")
+            }
+        }
+        .frame(width: 20)
+    }
+
+    private var hasBottomMetadata: Bool {
+        (task.category?.isEmpty == false) || task.estimate != nil || task.priority == .high
+    }
+
+    private var bottomMetadata: some View {
+        HStack(spacing: 8) {
+            if let category = task.category, !category.isEmpty {
+                Text(category)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(Capsule().fill(.quaternary))
+            }
+            Spacer(minLength: 0)
+            if let estimate = task.estimate {
+                HStack(spacing: 3) {
+                    Image(systemName: "clock")
+                    Text(estimate.displayText)
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            }
+            if let priority = task.priority, priority == .high {
+                Image(systemName: priority.systemImage)
+                    .font(.caption2)
+                    .foregroundStyle(priority.color)
+            }
+        }
     }
 
     private var backgroundFill: AnyShapeStyle {

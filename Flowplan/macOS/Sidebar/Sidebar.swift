@@ -171,7 +171,16 @@ struct Sidebar: View {
                 }
             }
         }
-        .navigationTitle(viewModel.plan?.title ?? "Flowplan")
+        .navigationTitle(currentViewTitle)
+    }
+
+    /// The title of the view currently shown (the plan name lives in the sidebar picker instead).
+    private var currentViewTitle: String {
+        if viewModel.showOverview { return "Overview" }
+        if viewModel.activeFilters.count == 1, let filter = viewModel.activeFilters.first {
+            return filter.description
+        }
+        return viewModel.viewMode.title
     }
 
     // MARK: - Toolbar
