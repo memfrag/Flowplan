@@ -14,9 +14,8 @@ struct GraphCanvasView: View {
 
     @State private var editingTitle: String = ""
 
-    // Pan/zoom gesture baselines, seeded at the start of each gesture so they compose with
-    // trackpad scroll/pinch that write the offset/scale directly.
-    @State private var panStartOffset: CGSize?
+    // Zoom gesture baseline, seeded at the start of the gesture so it composes with trackpad pinch
+    // that writes the scale directly.
     @State private var zoomStart: CGFloat?
 
     // Drag-to-create-dependency state.
@@ -32,11 +31,16 @@ struct GraphCanvasView: View {
     @State private var draggingTaskIDs: Set<UUID> = []
     @State private var dragTranslation: CGSize = .zero
 
+    // Empty-canvas drag is handled by two simultaneous gestures (pan + marquee). Each independently
+    // decides — from the shift key on its own first event — whether it owns the current drag, so they
+    // never depend on each other's state. `nil` = not yet decided this drag.
+    @State private var panActive: Bool?
+    @State private var panBaseOffset: CGSize = .zero
+
     // Marquee (shift-drag) selection state, in canvas content coordinates.
+    @State private var marqueeActive: Bool?
     @State private var marqueeRect: CGRect?
     @State private var marqueeBaseSelection: Set<UUID> = []
-    // Baseline for an in-progress background pan started inside the content area.
-    @State private var contentPanBaseOffset: CGSize?
 
     // Latest pointer location in canvas content coordinates, used to place a right-click "New Task".
     @State private var hoverLocation: CGPoint?
@@ -59,7 +63,6 @@ struct GraphCanvasView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(scrollCatcher)
             .contentShape(Rectangle())
-            .gesture(panGesture)
             .gesture(zoomGesture)
             .onTapGesture { viewModel.clearSelection() }
             .contextMenu { canvasContextMenu }
@@ -102,11 +105,13 @@ struct GraphCanvasView: View {
 
         return ZStack {
             // A transparent hit layer behind everything: empty-canvas drags land here and either pan
-            // (plain drag) or draw a marquee selection (shift-drag), in canvas content coordinates.
+            // (plain drag, in stable screen space) or draw a marquee selection (shift-drag, in canvas
+            // content space). Split into two gestures so pan never reads the moving content space.
             Color.white.opacity(0.001)
                 .contentShape(Rectangle())
                 .onTapGesture { viewModel.clearSelection() }
-                .gesture(backgroundDragGesture(snapshot: snapshot))
+                .gesture(canvasPanGesture)
+                .simultaneousGesture(canvasMarqueeGesture(snapshot: snapshot))
 
             DependencyEdgesView(
                 edges: edges,
@@ -385,29 +390,42 @@ struct GraphCanvasView: View {
             }
     }
 
-    /// Empty-canvas drag: shift-drag draws a marquee that selects the cards it covers; a plain drag
-    /// pans. Runs in canvas content coordinates so the marquee rectangle and card rects share a frame
-    /// (no manual zoom/offset math), while pan converts the content-space translation to screen space.
-    private func backgroundDragGesture(snapshot: PlanViewModel.RenderSnapshot) -> some Gesture {
+    /// Empty-canvas pan. Runs in the stable global (screen) space — never the canvas content space,
+    /// which moves as we change the offset and would feed back into the gesture as jitter.
+    private var canvasPanGesture: some Gesture {
+        DragGesture(coordinateSpace: .global)
+            .onChanged { value in
+                if panActive == nil {
+                    // This drag is a pan unless shift is held (then the marquee gesture owns it).
+                    panActive = !NSEvent.modifierFlags.contains(.shift)
+                    // The first event already carries the `minimumDistance` the pointer moved to start
+                    // the drag. Fold it into the baseline so the canvas doesn't jump by that threshold.
+                    panBaseOffset = CGSize(
+                        width: viewModel.canvasOffset.width - value.translation.width,
+                        height: viewModel.canvasOffset.height - value.translation.height
+                    )
+                }
+                guard panActive == true else { return }
+                viewModel.canvasOffset = CGSize(
+                    width: panBaseOffset.width + value.translation.width,
+                    height: panBaseOffset.height + value.translation.height
+                )
+            }
+            .onEnded { _ in panActive = nil }
+    }
+
+    /// Shift-drag marquee selection. Runs in canvas content coordinates so the marquee rectangle and
+    /// the card rects share one frame (no manual zoom/offset math); the offset doesn't change during
+    /// a marquee, so this space stays stable.
+    private func canvasMarqueeGesture(snapshot: PlanViewModel.RenderSnapshot) -> some Gesture {
         DragGesture(coordinateSpace: .named(GraphMetrics.canvasSpaceName))
             .onChanged { value in
-                if marqueeRect == nil && contentPanBaseOffset == nil {
-                    // First change: choose the mode based on whether shift is held.
-                    if NSEvent.modifierFlags.contains(.shift) {
-                        marqueeBaseSelection = viewModel.selectedTaskIDs
-                    } else {
-                        contentPanBaseOffset = viewModel.canvasOffset
-                    }
+                if marqueeActive == nil {
+                    // This drag is a marquee only when shift is held (otherwise the pan gesture owns it).
+                    marqueeActive = NSEvent.modifierFlags.contains(.shift)
+                    if marqueeActive == true { marqueeBaseSelection = viewModel.selectedTaskIDs }
                 }
-
-                if let base = contentPanBaseOffset {
-                    viewModel.canvasOffset = CGSize(
-                        width: base.width + value.translation.width * viewModel.zoomScale,
-                        height: base.height + value.translation.height * viewModel.zoomScale
-                    )
-                    return
-                }
-
+                guard marqueeActive == true else { return }
                 let rect = CGRect(
                     x: min(value.startLocation.x, value.location.x),
                     y: min(value.startLocation.y, value.location.y),
@@ -418,9 +436,11 @@ struct GraphCanvasView: View {
                 viewModel.setSelectedTasks(marqueeBaseSelection.union(tasksIntersecting(rect, snapshot: snapshot)))
             }
             .onEnded { _ in
-                marqueeRect = nil
-                marqueeBaseSelection = []
-                contentPanBaseOffset = nil
+                if marqueeActive == true {
+                    marqueeRect = nil
+                    marqueeBaseSelection = []
+                }
+                marqueeActive = nil
             }
     }
 
@@ -461,19 +481,6 @@ struct GraphCanvasView: View {
                 guard let target = taskHit(at: value.location, excluding: task.id) else { return }
                 viewModel.createDependency(from: task, to: target)
             }
-    }
-
-    private var panGesture: some Gesture {
-        DragGesture()
-            .onChanged { value in
-                let base = panStartOffset ?? viewModel.canvasOffset
-                if panStartOffset == nil { panStartOffset = base }
-                viewModel.canvasOffset = CGSize(
-                    width: base.width + value.translation.width,
-                    height: base.height + value.translation.height
-                )
-            }
-            .onEnded { _ in panStartOffset = nil }
     }
 
     private var zoomGesture: some Gesture {
