@@ -8,12 +8,22 @@ import SwiftUI
 /// icon + label so state is never conveyed by colour alone (spec §8).
 struct TaskCardView: View {
 
+    /// How this card should be highlighted as the drop target of an in-progress dependency drag.
+    enum LinkTargetHighlight: Equatable {
+        case none
+        /// A valid destination — dropping here would create a dependency.
+        case valid
+        /// The pointer is over this card, but the dependency would be rejected (self/duplicate/cycle).
+        case invalid
+    }
+
     let task: PlanTask
     let number: Int
     let state: TaskDisplayState
     let isSelected: Bool
     let isDimmed: Bool
     let isEditing: Bool
+    var linkTarget: LinkTargetHighlight = .none
 
     @Binding var editingTitle: String
     var onCommitEdit: () -> Void
@@ -59,10 +69,20 @@ struct TaskCardView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(borderColor, lineWidth: isSelected ? 2.5 : 1.5)
         }
+        .overlay {
+            // A bold ring around the card the connector is currently pointing at, so the drop
+            // destination is unmistakable while dragging.
+            if let color = linkTargetColor {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(color, lineWidth: 3)
+            }
+        }
         .opacity(isDimmed ? 0.35 : 1)
-        // Only the selected card casts a shadow — avoids N offscreen shadow passes per frame while
-        // dragging. Depth for the rest comes from the border.
-        .shadow(color: .black.opacity(isSelected ? 0.18 : 0), radius: isSelected ? 8 : 0, y: isSelected ? 2 : 0)
+        // Only the selected card — or the current link target — casts a shadow, so we avoid N
+        // offscreen shadow passes per frame while dragging. Depth for the rest comes from the border.
+        .shadow(color: linkTargetColor ?? .black.opacity(isSelected ? 0.18 : 0),
+                radius: linkTarget == .none ? (isSelected ? 8 : 0) : 10,
+                y: isSelected ? 2 : 0)
     }
 
     /// The leading vertical column: state icon, number, then notes/description indicators.
@@ -134,5 +154,14 @@ struct TaskCardView: View {
     private var borderColor: Color {
         if isSelected { return state.color }
         return isBacklog ? Color.secondary.opacity(0.4) : state.color.opacity(0.7)
+    }
+
+    /// The ring/glow colour for the current drop-target state, or `nil` when this card isn't the target.
+    private var linkTargetColor: Color? {
+        switch linkTarget {
+        case .none: return nil
+        case .valid: return .green
+        case .invalid: return .red
+        }
     }
 }

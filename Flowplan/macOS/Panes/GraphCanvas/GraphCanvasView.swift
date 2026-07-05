@@ -98,8 +98,9 @@ struct GraphCanvasView: View {
                 frameRect: edgesRect(edges: edges, pending: pending, size: size)
             )
 
+            let linkTarget = currentLinkTarget()
             ForEach(snapshot.orderedTasks) { task in
-                cardContainer(for: task, snapshot: snapshot)
+                cardContainer(for: task, snapshot: snapshot, linkTarget: linkTarget)
             }
 
             // Connector delete hotspots sit on top of the cards so they are always hoverable.
@@ -198,9 +199,17 @@ struct GraphCanvasView: View {
         }
     }
 
-    private func cardContainer(for task: PlanTask, snapshot: PlanViewModel.RenderSnapshot) -> some View {
+    private func cardContainer(
+        for task: PlanTask,
+        snapshot: PlanViewModel.RenderSnapshot,
+        linkTarget: (id: UUID, isValid: Bool)?
+    ) -> some View {
         let state = snapshot.displayState(of: task)
         let isEditing = viewModel.editingTaskID == task.id
+        let highlight: TaskCardView.LinkTargetHighlight = {
+            guard let linkTarget, linkTarget.id == task.id else { return .none }
+            return linkTarget.isValid ? .valid : .invalid
+        }()
 
         // NOTE: interaction modifiers (hover, gestures) must be applied to the card-sized view
         // BEFORE `.position`, because `.position` expands the view to fill the whole canvas —
@@ -212,6 +221,7 @@ struct GraphCanvasView: View {
             isSelected: viewModel.selectedTaskID == task.id,
             isDimmed: shouldDim(task, snapshot: snapshot),
             isEditing: isEditing,
+            linkTarget: highlight,
             editingTitle: $editingTitle,
             onCommitEdit: { commitEdit(task) }
         )
@@ -430,6 +440,18 @@ struct GraphCanvasView: View {
         guard let linkSource, let linkPoint else { return nil }
         let p = effectivePosition(of: linkSource)
         return (CGPoint(x: p.x + cardSize.width / 2, y: p.y), linkPoint)
+    }
+
+    /// The task the in-progress dependency drag is currently pointing at, and whether dropping there
+    /// would be a valid dependency (no self/duplicate/cycle). `nil` when no link drag is active or the
+    /// pointer isn't over a card. Computed once per frame and shared across all cards.
+    private func currentLinkTarget() -> (id: UUID, isValid: Bool)? {
+        guard let linkSource, let linkPoint,
+              let target = taskHit(at: linkPoint, excluding: linkSource.id) else { return nil }
+        let isValid = viewModel.plan.map {
+            (try? $0.graph.validateNewDependency(from: linkSource.id, to: target.id)) != nil
+        } ?? false
+        return (target.id, isValid)
     }
 
     private func taskHit(at point: CGPoint, excluding excludedID: UUID) -> PlanTask? {
