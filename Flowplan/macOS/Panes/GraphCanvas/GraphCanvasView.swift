@@ -19,6 +19,9 @@ struct GraphCanvasView: View {
     @State private var linkPoint: CGPoint?
     @State private var hoveredTaskID: UUID?
     @State private var hoveredDependencyID: UUID?
+    // Offset between the cursor and the card's centre at the moment a drag begins, so the grabbed
+    // point stays under the cursor instead of snapping the centre to it.
+    @State private var dragGrabOffset: CGSize?
 
     private let cardSize = GraphMetrics.cardSize
 
@@ -203,14 +206,28 @@ struct GraphCanvasView: View {
             .onChanged { value in
                 // Fires on press (translation == .zero) → select instantly; move only once dragged.
                 if viewModel.selectedTaskID != task.id { viewModel.selectTask(task.id) }
-                if value.translation.width != 0 || value.translation.height != 0 {
-                    task.position = value.location
+                guard value.translation.width != 0 || value.translation.height != 0 else { return }
+                if dragGrabOffset == nil {
+                    let center = task.position ?? value.startLocation
+                    dragGrabOffset = CGSize(
+                        width: center.x - value.startLocation.x,
+                        height: center.y - value.startLocation.y
+                    )
                 }
+                task.position = draggedCenter(value: value)
             }
             .onEnded { value in
-                let moved = abs(value.translation.width) > 2 || abs(value.translation.height) > 2
-                if moved { viewModel.moveTask(task, to: value.location) }
+                if dragGrabOffset != nil {
+                    viewModel.moveTask(task, to: draggedCenter(value: value))
+                }
+                dragGrabOffset = nil
             }
+    }
+
+    /// The card centre for a drag value, keeping the originally-grabbed point under the cursor.
+    private func draggedCenter(value: DragGesture.Value) -> CGPoint {
+        let offset = dragGrabOffset ?? .zero
+        return CGPoint(x: value.location.x + offset.width, y: value.location.y + offset.height)
     }
 
     private func linkDragGesture(from task: PlanTask) -> some Gesture {
