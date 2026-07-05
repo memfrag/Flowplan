@@ -116,7 +116,12 @@ public final class PlanViewModel {
 
     /// Whether a task matches the current search + filter state (used for dimming).
     public func matchesFilters(_ task: PlanTask) -> Bool {
-        if !activeFilters.isEmpty, !activeFilters.contains(displayState(of: task)) {
+        matches(task, displayState: displayState(of: task))
+    }
+
+    /// Filter/search match using an already-computed display state (avoids rebuilding the graph).
+    public func matches(_ task: PlanTask, displayState: TaskDisplayState) -> Bool {
+        if !activeFilters.isEmpty, !activeFilters.contains(displayState) {
             return false
         }
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -125,6 +130,49 @@ public final class PlanViewModel {
             .joined(separator: " ")
             .lowercased()
         return haystack.contains(query)
+    }
+
+    // MARK: - Render snapshot
+
+    /// A per-render snapshot of everything the graph canvas needs, computed from a single
+    /// `TaskGraph` build and one sorted pass — so the canvas doesn't rebuild the graph per card
+    /// or do O(N) id lookups per edge on every frame.
+    public struct RenderSnapshot {
+        public var orderedTasks: [PlanTask]
+        public var taskByID: [UUID: PlanTask]
+        public var displayStateByID: [UUID: TaskDisplayState]
+        public var numberByID: [UUID: Int]
+
+        public func displayState(of task: PlanTask) -> TaskDisplayState {
+            displayStateByID[task.id] ?? .readyToStart
+        }
+
+        public func number(of task: PlanTask) -> Int {
+            numberByID[task.id] ?? 0
+        }
+    }
+
+    public func renderSnapshot() -> RenderSnapshot {
+        let ordered = tasks
+        guard let plan else {
+            return RenderSnapshot(orderedTasks: ordered, taskByID: [:], displayStateByID: [:], numberByID: [:])
+        }
+        let graph = plan.graph
+        var taskByID: [UUID: PlanTask] = [:]
+        var displayStateByID: [UUID: TaskDisplayState] = [:]
+        var numberByID: [UUID: Int] = [:]
+        taskByID.reserveCapacity(ordered.count)
+        for (index, task) in ordered.enumerated() {
+            taskByID[task.id] = task
+            displayStateByID[task.id] = graph.displayState(of: task.id)
+            numberByID[task.id] = index + 1
+        }
+        return RenderSnapshot(
+            orderedTasks: ordered,
+            taskByID: taskByID,
+            displayStateByID: displayStateByID,
+            numberByID: numberByID
+        )
     }
 
     public func count(of state: TaskDisplayState) -> Int {

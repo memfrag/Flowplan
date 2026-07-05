@@ -90,7 +90,9 @@ struct TaskCardView: View {
                 .strokeBorder(borderColor, lineWidth: isSelected ? 2.5 : 1.5)
         }
         .opacity(isDimmed ? 0.35 : 1)
-        .shadow(color: .black.opacity(isBacklog ? 0.05 : 0.12), radius: isSelected ? 8 : 4, y: 2)
+        // Only the selected card casts a shadow — avoids N offscreen shadow passes per frame while
+        // dragging. Depth for the rest comes from the border.
+        .shadow(color: .black.opacity(isSelected ? 0.18 : 0), radius: isSelected ? 8 : 0, y: isSelected ? 2 : 0)
     }
 
     private var backgroundFill: AnyShapeStyle {

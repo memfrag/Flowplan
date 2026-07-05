@@ -31,7 +31,11 @@ struct GraphSnapshotView: View {
         ZStack {
             Color(white: 0.98)
 
-            DependencyEdgesView(edges: edges(origin: origin), pendingLink: nil)
+            DependencyEdgesView(
+                edges: edges(origin: origin),
+                pendingLink: nil,
+                frameRect: CGRect(origin: .zero, size: bounds.size)
+            )
 
             ForEach(Array(orderedTasks.enumerated()), id: \.element.id) { index, task in
                 TaskCardView(

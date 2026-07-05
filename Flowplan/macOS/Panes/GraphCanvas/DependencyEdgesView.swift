@@ -18,9 +18,15 @@ struct DependencyEdgesView: View {
     let edges: [Edge]
     /// A temporary line shown while the user drags to create a new dependency.
     let pendingLink: (start: CGPoint, end: CGPoint)?
+    /// The region (in canvas coordinates) the Canvas covers. May start at a negative origin so
+    /// connectors above/left of the content origin aren't clipped.
+    let frameRect: CGRect
 
     var body: some View {
         Canvas { context, _ in
+            // Draw in absolute canvas coordinates regardless of where the Canvas sits.
+            context.translateBy(x: -frameRect.origin.x, y: -frameRect.origin.y)
+
             for edge in edges {
                 let path = Self.connectorPath(from: edge.start, to: edge.end)
                 let color = edge.isHighlighted ? Color.accentColor : Color.secondary.opacity(0.55)
@@ -39,6 +45,8 @@ struct DependencyEdgesView: View {
                 context.fill(Self.arrowhead(at: pendingLink.end), with: .color(.accentColor))
             }
         }
+        .frame(width: frameRect.width, height: frameRect.height)
+        .position(x: frameRect.midX, y: frameRect.midY)
         .allowsHitTesting(false)
     }
 
