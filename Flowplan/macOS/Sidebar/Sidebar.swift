@@ -10,13 +10,11 @@ struct Sidebar: View {
     @Bindable var viewModel: PlanViewModel
 
     @Environment(PlanStore.self) private var store
+    @Environment(\.openWindow) private var openWindow
     @Query(sort: \Plan.createdAt) private var plans: [Plan]
 
     @State private var selection: SidebarSelection? = .mode(.graph)
     @State private var isInspectorPresented: Bool = true
-
-    @State private var renamingPlan: Plan?
-    @State private var renameText: String = ""
 
     var body: some View {
         NavigationSplitView {
@@ -43,29 +41,6 @@ struct Sidebar: View {
         } message: { alert in
             Text(alert.message)
         }
-        .alert("Rename Plan", isPresented: renamePresented) {
-            TextField("Plan name", text: $renameText)
-            Button("Save") { commitRename() }
-            Button("Cancel", role: .cancel) { renamingPlan = nil }
-        }
-    }
-
-    private var renamePresented: Binding<Bool> {
-        Binding(
-            get: { renamingPlan != nil },
-            set: { if !$0 { renamingPlan = nil } }
-        )
-    }
-
-    private func commitRename() {
-        guard let plan = renamingPlan else { return }
-        let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty {
-            plan.title = trimmed
-            plan.touch()
-            store.save()
-        }
-        renamingPlan = nil
     }
 
     // MARK: - Sidebar list
@@ -130,23 +105,6 @@ struct Sidebar: View {
                 viewModel.clearSelection()
             } label: {
                 Label("New Plan", systemImage: "plus")
-            }
-
-            if let current = viewModel.plan {
-                Button {
-                    renameText = current.title
-                    renamingPlan = current
-                } label: {
-                    Label("Rename…", systemImage: "pencil")
-                }
-
-                Button(role: .destructive) {
-                    store.deletePlan(current)
-                    viewModel.plan = plans.first { $0.id != current.id }
-                    viewModel.clearSelection()
-                } label: {
-                    Label("Delete “\(current.title)”", systemImage: "trash")
-                }
             }
         } label: {
             HStack(spacing: 6) {
@@ -220,6 +178,15 @@ struct Sidebar: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+
+        ToolbarItem {
+            Button {
+                openWindow(id: ProjectManagerWindow.windowID)
+            } label: {
+                Label("Project Manager", systemImage: "folder.badge.gearshape")
+            }
+            .help("Manage projects and their details")
+        }
 
         ToolbarItemGroup(placement: .primaryAction) {
             Button {

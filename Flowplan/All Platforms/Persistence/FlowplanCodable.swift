@@ -17,6 +17,8 @@ nonisolated public struct PlanDTO: Codable, Sendable {
     public var updatedAt: Date
     public var tasks: [TaskDTO]
     public var dependencies: [DependencyDTO]
+    public var summary: String? = nil
+    public var repositoryURLs: [String]? = nil
 }
 
 nonisolated public struct TaskDTO: Codable, Sendable {
@@ -54,6 +56,8 @@ extension PlanDTO {
         self.title = plan.title
         self.createdAt = plan.createdAt
         self.updatedAt = plan.updatedAt
+        self.summary = plan.summary.isEmpty ? nil : plan.summary
+        self.repositoryURLs = plan.repositoryURLs.isEmpty ? nil : plan.repositoryURLs
         self.tasks = plan.tasks
             .sorted { $0.createdAt < $1.createdAt }
             .map(TaskDTO.init(task:))
@@ -92,7 +96,14 @@ extension PlanDTO {
     /// Builds a fresh `Plan` (with its tasks and dependencies) from this DTO, ready to insert into
     /// a `ModelContext`.
     @MainActor public func makePlan() -> Plan {
-        let plan = Plan(id: id, title: title, createdAt: createdAt, updatedAt: updatedAt)
+        let plan = Plan(
+            id: id,
+            title: title,
+            summary: summary ?? "",
+            repositoryURLs: repositoryURLs ?? [],
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
         plan.tasks = tasks.map { dto in
             PlanTask(
                 id: dto.id,

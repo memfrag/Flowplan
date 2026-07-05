@@ -25,6 +25,7 @@ struct MainWindow: Scene {
             CheckForUpdatesCommand(updater: updater)
             SidebarCommands()
             TaskCommands()
+            ProjectCommands()
             FlowplanExportCommands()
             HelpCommands()
         }

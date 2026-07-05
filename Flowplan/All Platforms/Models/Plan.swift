@@ -12,6 +12,13 @@ public final class Plan {
     @Attribute(.unique) public var id: UUID
 
     public var title: String
+
+    /// A description of what the project is about (project-level metadata).
+    public var summary: String = ""
+
+    /// Associated GitHub (or other) repository URLs.
+    public var repositoryURLs: [String] = []
+
     public var createdAt: Date
     public var updatedAt: Date
 
@@ -24,6 +31,8 @@ public final class Plan {
     public init(
         id: UUID = UUID(),
         title: String,
+        summary: String = "",
+        repositoryURLs: [String] = [],
         createdAt: Date = .now,
         updatedAt: Date = .now,
         tasks: [PlanTask] = [],
@@ -31,6 +40,8 @@ public final class Plan {
     ) {
         self.id = id
         self.title = title
+        self.summary = summary
+        self.repositoryURLs = repositoryURLs
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.tasks = tasks
