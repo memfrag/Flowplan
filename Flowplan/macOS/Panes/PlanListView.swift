@@ -4,54 +4,59 @@
 
 import SwiftUI
 
-/// A list of the active plan's tasks for quick scanning and metadata editing (spec §12).
+/// A list of the active plan's tasks, grouped by derived state, for quick scanning and metadata
+/// editing (spec §12).
 struct PlanListView: View {
 
     @Bindable var viewModel: PlanViewModel
 
-    private var rows: [PlanTask] {
-        viewModel.tasks.filter { viewModel.matchesFilters($0) }
+    /// The order sections appear in — actionable work first, archived last.
+    private let sectionOrder: [TaskDisplayState] = [.inProgress, .readyToStart, .backlog, .done, .closed]
+
+    /// Filtered tasks grouped by display state, built from a single graph snapshot.
+    private var groups: [TaskDisplayState: [PlanTask]] {
+        guard let graph = viewModel.plan?.graph else { return [:] }
+        var result: [TaskDisplayState: [PlanTask]] = [:]
+        for task in viewModel.tasks {
+            let state = graph.displayState(of: task.id)
+            guard viewModel.matches(task, displayState: state) else { continue }
+            result[state, default: []].append(task)
+        }
+        return result
     }
 
     var body: some View {
         List(selection: selectionBinding) {
-            Section {
-                ForEach(rows) { task in
-                    row(task).tag(task.id)
+            ForEach(sectionOrder, id: \.self) { state in
+                let items = groups[state] ?? []
+                if !items.isEmpty {
+                    Section {
+                        ForEach(items) { task in
+                            row(task).tag(task.id)
+                        }
+                    } header: {
+                        sectionHeader(state, count: items.count)
+                    }
                 }
-            } header: {
-                header
             }
         }
         .listStyle(.inset)
-        .navigationTitle(viewModel.plan?.title ?? "Flowplan")
     }
 
-    private var header: some View {
-        HStack(spacing: 12) {
-            Text("Title").frame(maxWidth: .infinity, alignment: .leading)
-            Text("State").frame(width: 130, alignment: .leading)
-            Text("Progress").frame(width: 120, alignment: .leading)
-            Text("Blk").frame(width: 36, alignment: .trailing)
-            Text("Dep").frame(width: 36, alignment: .trailing)
-            Text("Next").frame(width: 36, alignment: .trailing)
-            Text("Priority").frame(width: 90, alignment: .leading)
-            Text("Estimate").frame(width: 80, alignment: .leading)
+    private func sectionHeader(_ state: TaskDisplayState, count: Int) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: state.systemImage).foregroundStyle(state.color)
+            Text(state.description)
+            Text("\(count)").foregroundStyle(.tertiary).monospacedDigit()
         }
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(.secondary)
+        .font(.subheadline.weight(.semibold))
     }
 
     private func row(_ task: PlanTask) -> some View {
-        let state = viewModel.displayState(of: task)
-        return HStack(spacing: 12) {
+        HStack(spacing: 12) {
             Text(task.title)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
-
-            Label(state.description, systemImage: state.systemImage)
-                .foregroundStyle(state.color)
-                .frame(width: 130, alignment: .leading)
 
             Picker("", selection: progressBinding(task)) {
                 ForEach(TaskProgress.allCases) { progress in
@@ -64,10 +69,13 @@ struct PlanListView: View {
 
             Text("\(viewModel.blockers(of: task).count)")
                 .foregroundStyle(.secondary).frame(width: 36, alignment: .trailing)
+                .help("Blockers")
             Text("\(viewModel.prerequisites(of: task).count)")
                 .foregroundStyle(.secondary).frame(width: 36, alignment: .trailing)
+                .help("Dependencies")
             Text("\(viewModel.dependents(of: task).count)")
                 .foregroundStyle(.secondary).frame(width: 36, alignment: .trailing)
+                .help("Dependents")
 
             Group {
                 if let priority = task.priority {

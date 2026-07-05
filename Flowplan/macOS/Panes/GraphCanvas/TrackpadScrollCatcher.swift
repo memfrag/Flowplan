@@ -34,7 +34,9 @@ struct TrackpadScrollCatcher: NSViewRepresentable {
 
     final class ScrollCatchingView: NSView {
         var onScroll: ((CGSize) -> Void)?
-        private var monitor: Any?
+        // Touched only on the main thread; `nonisolated(unsafe)` lets `teardownMonitor()` run from
+        // the nonisolated `deinit` without an actor hop.
+        nonisolated(unsafe) private var monitor: Any?
 
         // Don't steal mouse clicks — panning is handled via the scroll-event monitor.
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
@@ -65,7 +67,9 @@ struct TrackpadScrollCatcher: NSViewRepresentable {
             return nil // consume so nothing else scrolls
         }
 
-        func teardownMonitor() {
+        // `nonisolated` so it's callable from the (nonisolated) `deinit` under the module's
+        // main-actor-by-default isolation. Monitor access happens on the main thread in practice.
+        nonisolated func teardownMonitor() {
             if let monitor {
                 NSEvent.removeMonitor(monitor)
                 self.monitor = nil
