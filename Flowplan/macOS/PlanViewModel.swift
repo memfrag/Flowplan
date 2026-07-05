@@ -49,7 +49,13 @@ public final class PlanViewModel {
 
     // MARK: - UI state
 
-    public var viewMode: PlanViewMode = .graph
+    /// When true, the detail area shows the Overview dashboard instead of the graph/list.
+    /// Any change of ``viewMode`` (via the sidebar, commands, or actions) leaves the overview.
+    public var showOverview: Bool = false
+
+    public var viewMode: PlanViewMode = .graph {
+        didSet { showOverview = false }
+    }
     public var selectedTaskID: UUID?
     public var selectedDependencyID: UUID?
     public var editingTaskID: UUID?
@@ -191,6 +197,24 @@ public final class PlanViewModel {
     public func selectDependency(_ dependencyID: UUID?) {
         selectedDependencyID = dependencyID
         selectedTaskID = nil
+    }
+
+    /// Shows the Overview dashboard and clears any active focus filter.
+    public func openOverview() {
+        activeFilters = []
+        showOverview = true
+    }
+
+    /// Focuses a single display state — graph (dimming non-matches) or list for Closed.
+    public func focus(on state: TaskDisplayState) {
+        activeFilters = [state]
+        viewMode = (state == .closed) ? .list : .graph
+    }
+
+    /// Selects a task and reveals it on the graph (leaving the overview/list).
+    public func openTaskInGraph(_ task: PlanTask) {
+        viewMode = .graph
+        selectTask(task.id)
     }
 
     public func clearSelection() {

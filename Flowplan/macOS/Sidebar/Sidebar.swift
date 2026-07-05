@@ -20,6 +20,7 @@ struct Sidebar: View {
             sidebarList
                 .listStyle(.sidebar)
                 .frame(minWidth: 200, idealWidth: 220, maxWidth: 320)
+                .safeAreaInset(edge: .top, spacing: 0) { sidebarHeader }
         } detail: {
             detail
                 .inspector(isPresented: $isInspectorPresented) {
@@ -45,13 +46,10 @@ struct Sidebar: View {
 
     private var sidebarList: some View {
         List(selection: $selection) {
-            Section {
+            Section("Views") {
                 NavigationLink(value: SidebarSelection.overview) {
                     Label("Overview", systemImage: "square.grid.2x2")
                 }
-            }
-
-            Section("Views") {
                 NavigationLink(value: SidebarSelection.mode(.graph)) {
                     Label("Graph View", systemImage: PlanViewMode.graph.systemImage)
                 }
@@ -70,21 +68,75 @@ struct Sidebar: View {
                 focusRow(.done, title: "Done")
                 focusRow(.closed, title: "Closed")
             }
-
-            Section("Projects") {
-                ForEach(plans) { plan in
-                    projectRow(plan)
-                }
-                Button {
-                    let plan = store.createPlan()
-                    viewModel.plan = plan
-                } label: {
-                    Label("Add Plan", systemImage: "plus")
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-            }
         }
+    }
+
+    // MARK: - Plan picker (sidebar header)
+
+    private var sidebarHeader: some View {
+        VStack(spacing: 0) {
+            planPicker
+                .padding(.horizontal, 10)
+                .padding(.vertical, 12)
+        }
+    }
+
+    private var planPicker: some View {
+        Menu {
+            ForEach(plans) { plan in
+                Button {
+                    viewModel.plan = plan
+                    viewModel.clearSelection()
+                } label: {
+                    if viewModel.plan?.id == plan.id {
+                        Label(plan.title, systemImage: "checkmark")
+                    } else {
+                        Text(plan.title)
+                    }
+                }
+            }
+
+            Divider()
+
+            Button {
+                let plan = store.createPlan()
+                viewModel.plan = plan
+                viewModel.clearSelection()
+            } label: {
+                Label("New Plan", systemImage: "plus")
+            }
+
+            if let current = viewModel.plan {
+                Button(role: .destructive) {
+                    store.deletePlan(current)
+                    viewModel.plan = plans.first { $0.id != current.id }
+                    viewModel.clearSelection()
+                } label: {
+                    Label("Delete “\(current.title)”", systemImage: "trash")
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "folder")
+                    .foregroundStyle(.secondary)
+                Text(viewModel.plan?.title ?? "No Plan")
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        // Borderless style lets the label's full-width frame take effect (the bordered menu style
+        // shrinks to its content and ignores width). The border/background go on the Menu itself,
+        // because a borderless menu discards decorations applied to its *label*.
+        .menuStyle(.borderlessButton)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.primary.opacity(0.06)))
+        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color.primary.opacity(0.18)))
     }
 
     private func focusRow(_ state: TaskDisplayState, title: String) -> some View {
@@ -103,39 +155,23 @@ struct Sidebar: View {
         }
     }
 
-    private func projectRow(_ plan: Plan) -> some View {
-        let isActive = viewModel.plan?.id == plan.id
-        return Button {
-            viewModel.plan = plan
-            viewModel.clearSelection()
-        } label: {
-            Label(plan.title, systemImage: "folder")
-                .fontWeight(isActive ? .semibold : .regular)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .listRowBackground(isActive ? Color.accentColor.opacity(0.15) : Color.clear)
-        .contextMenu {
-            Button("Delete Plan", role: .destructive) {
-                store.deletePlan(plan)
-                if viewModel.plan?.id == plan.id { viewModel.plan = plans.first { $0.id != plan.id } }
-            }
-        }
-    }
-
     // MARK: - Detail
 
     @ViewBuilder
     private var detail: some View {
-        if viewModel.plan == nil {
-            EmptyPlansState { _ = store.createPlan() }
-        } else {
-            switch viewModel.viewMode {
-            case .graph: GraphCanvasView(viewModel: viewModel)
-            case .list: PlanListView(viewModel: viewModel)
+        Group {
+            if viewModel.plan == nil {
+                EmptyPlansState { _ = store.createPlan() }
+            } else if viewModel.showOverview {
+                OverviewPane(viewModel: viewModel)
+            } else {
+                switch viewModel.viewMode {
+                case .graph: GraphCanvasView(viewModel: viewModel)
+                case .list: PlanListView(viewModel: viewModel)
+                }
             }
         }
+        .navigationTitle(viewModel.plan?.title ?? "Flowplan")
     }
 
     // MARK: - Toolbar
@@ -157,7 +193,7 @@ struct Sidebar: View {
             } label: {
                 Label("Auto Layout", systemImage: "wand.and.stars")
             }
-            .disabled(viewModel.plan == nil || viewModel.viewMode != .graph)
+            .disabled(viewModel.plan == nil || viewModel.viewMode != .graph || viewModel.showOverview)
 
             zoomControls
 
@@ -171,7 +207,7 @@ struct Sidebar: View {
 
     @ViewBuilder
     private var zoomControls: some View {
-        if viewModel.viewMode == .graph {
+        if viewModel.viewMode == .graph && !viewModel.showOverview {
             Button { setZoom(viewModel.zoomScale - 0.1) } label: { Image(systemName: "minus.magnifyingglass") }
             Text("\(Int(viewModel.zoomScale * 100))%")
                 .font(.caption.monospacedDigit())
@@ -189,15 +225,13 @@ struct Sidebar: View {
     private func apply(_ selection: SidebarSelection?) {
         switch selection {
         case .overview:
-            viewModel.activeFilters = []
-            viewModel.viewMode = .graph
+            viewModel.openOverview()
         case .mode(let mode):
-            viewModel.viewMode = mode
             viewModel.activeFilters = []
+            viewModel.viewMode = mode
         case .focus(let state):
-            viewModel.activeFilters = [state]
             // Closed tasks aren't drawn on the graph, so show them in the list instead.
-            viewModel.viewMode = (state == .closed) ? .list : .graph
+            viewModel.focus(on: state)
         case nil:
             break
         }

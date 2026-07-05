@@ -65,7 +65,6 @@ struct GraphCanvasView: View {
                     editingTitle = task.title
                 }
             }
-            .navigationTitle(viewModel.plan?.title ?? "Flowplan")
         }
     }
 
