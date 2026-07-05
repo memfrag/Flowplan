@@ -15,6 +15,9 @@ struct Sidebar: View {
     @State private var selection: SidebarSelection? = .mode(.graph)
     @State private var isInspectorPresented: Bool = true
 
+    @State private var renamingPlan: Plan?
+    @State private var renameText: String = ""
+
     var body: some View {
         NavigationSplitView {
             sidebarList
@@ -40,6 +43,29 @@ struct Sidebar: View {
         } message: { alert in
             Text(alert.message)
         }
+        .alert("Rename Plan", isPresented: renamePresented) {
+            TextField("Plan name", text: $renameText)
+            Button("Save") { commitRename() }
+            Button("Cancel", role: .cancel) { renamingPlan = nil }
+        }
+    }
+
+    private var renamePresented: Binding<Bool> {
+        Binding(
+            get: { renamingPlan != nil },
+            set: { if !$0 { renamingPlan = nil } }
+        )
+    }
+
+    private func commitRename() {
+        guard let plan = renamingPlan else { return }
+        let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            plan.title = trimmed
+            plan.touch()
+            store.save()
+        }
+        renamingPlan = nil
     }
 
     // MARK: - Sidebar list
@@ -107,6 +133,13 @@ struct Sidebar: View {
             }
 
             if let current = viewModel.plan {
+                Button {
+                    renameText = current.title
+                    renamingPlan = current
+                } label: {
+                    Label("Rename…", systemImage: "pencil")
+                }
+
                 Button(role: .destructive) {
                     store.deletePlan(current)
                     viewModel.plan = plans.first { $0.id != current.id }
