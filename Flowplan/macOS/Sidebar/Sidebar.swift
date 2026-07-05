@@ -83,51 +83,26 @@ struct Sidebar: View {
     }
 
     private var planPicker: some View {
-        Menu {
+        Picker("Project", selection: planSelectionBinding) {
             ForEach(plans) { plan in
-                Button {
-                    viewModel.plan = plan
-                    viewModel.clearSelection()
-                } label: {
-                    if viewModel.plan?.id == plan.id {
-                        Label(plan.title, systemImage: "checkmark")
-                    } else {
-                        Text(plan.title)
-                    }
-                }
+                Label(plan.title.isEmpty ? "Untitled Plan" : plan.title, systemImage: plan.icon)
+                    .tag(plan.id as UUID?)
             }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .frame(maxWidth: .infinity)
+    }
 
-            Divider()
-
-            Button {
-                let plan = store.createPlan()
+    private var planSelectionBinding: Binding<UUID?> {
+        Binding(
+            get: { viewModel.plan?.id },
+            set: { newID in
+                guard let plan = plans.first(where: { $0.id == newID }) else { return }
                 viewModel.plan = plan
                 viewModel.clearSelection()
-            } label: {
-                Label("New Plan", systemImage: "plus")
             }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "folder")
-                    .foregroundStyle(.secondary)
-                Text(viewModel.plan?.title ?? "No Plan")
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            .contentShape(Rectangle())
-        }
-        // Borderless style lets the label's full-width frame take effect (the bordered menu style
-        // shrinks to its content and ignores width). The border/background go on the Menu itself,
-        // because a borderless menu discards decorations applied to its *label*.
-        .menuStyle(.borderlessButton)
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.primary.opacity(0.06)))
-        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color.primary.opacity(0.18)))
+        )
     }
 
     private func focusRow(_ state: TaskDisplayState, title: String) -> some View {

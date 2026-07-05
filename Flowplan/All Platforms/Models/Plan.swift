@@ -13,6 +13,9 @@ public final class Plan {
 
     public var title: String
 
+    /// An SF Symbol name used as the project's icon.
+    public var icon: String = "folder"
+
     /// A description of what the project is about (project-level metadata).
     public var summary: String = ""
 
@@ -31,6 +34,7 @@ public final class Plan {
     public init(
         id: UUID = UUID(),
         title: String,
+        icon: String = "folder",
         summary: String = "",
         repositoryURLs: [String] = [],
         createdAt: Date = .now,
@@ -40,6 +44,7 @@ public final class Plan {
     ) {
         self.id = id
         self.title = title
+        self.icon = icon
         self.summary = summary
         self.repositoryURLs = repositoryURLs
         self.createdAt = createdAt

@@ -15,6 +15,21 @@ struct ProjectManagerView: View {
     @State private var renamingPlan: Plan?
     @State private var renameText: String = ""
 
+    /// SF Symbols offered as project icons.
+    private static let iconChoices = [
+        "folder", "tray.full", "shippingbox", "cube", "square.grid.2x2",
+        "star", "flag", "bolt", "flame", "sparkles",
+        "hammer", "wrench.and.screwdriver", "gearshape", "cpu", "terminal",
+        "paintbrush", "pencil.and.ruler", "camera", "photo", "music.note",
+        "gamecontroller", "book", "doc.text", "chart.bar", "calendar",
+        "cart", "briefcase", "building.2", "house", "globe",
+        "network", "server.rack", "leaf", "heart", "lightbulb", "paperplane",
+        "app", "app.gift", "tv", "airplane",
+        "checklist", "target", "clock", "person.2", "envelope", "megaphone",
+        "dollarsign.circle", "chart.line.uptrend.xyaxis", "graduationcap", "cross.case",
+        "lock", "desktopcomputer", "map", "car", "puzzlepiece", "ladybug"
+    ]
+
     private var selectedPlan: Plan? {
         plans.first { $0.id == selectedPlanID }
     }
@@ -23,11 +38,15 @@ struct ProjectManagerView: View {
         NavigationSplitView {
             List(selection: $selectedPlanID) {
                 ForEach(plans) { plan in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(plan.title.isEmpty ? "Untitled Plan" : plan.title)
-                        Text("\(plan.tasks.count) task\(plan.tasks.count == 1 ? "" : "s")")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(plan.title.isEmpty ? "Untitled Plan" : plan.title)
+                            Text("\(plan.tasks.count) task\(plan.tasks.count == 1 ? "" : "s")")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: plan.icon)
                     }
                     .tag(plan.id)
                     .contextMenu {
@@ -99,6 +118,33 @@ struct ProjectManagerView: View {
         Form {
             Section("Project") {
                 TextField("Name", text: titleBinding(plan))
+            }
+
+            Section("Icon") {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 40), spacing: 8)], spacing: 8) {
+                    ForEach(Self.iconChoices, id: \.self) { symbol in
+                        Button {
+                            plan.icon = symbol
+                            plan.touch()
+                            store.save()
+                        } label: {
+                            Image(systemName: symbol)
+                                .font(.system(size: 16))
+                                .frame(width: 36, height: 30)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(plan.icon == symbol ? Color.accentColor.opacity(0.22) : Color.clear)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .strokeBorder(plan.icon == symbol ? Color.accentColor : Color.secondary.opacity(0.25))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .help(symbol)
+                    }
+                }
+                .padding(.vertical, 4)
             }
 
             Section("Description") {

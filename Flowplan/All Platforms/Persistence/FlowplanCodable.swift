@@ -17,6 +17,7 @@ nonisolated public struct PlanDTO: Codable, Sendable {
     public var updatedAt: Date
     public var tasks: [TaskDTO]
     public var dependencies: [DependencyDTO]
+    public var icon: String? = nil
     public var summary: String? = nil
     public var repositoryURLs: [String]? = nil
 }
@@ -56,6 +57,7 @@ extension PlanDTO {
         self.title = plan.title
         self.createdAt = plan.createdAt
         self.updatedAt = plan.updatedAt
+        self.icon = plan.icon
         self.summary = plan.summary.isEmpty ? nil : plan.summary
         self.repositoryURLs = plan.repositoryURLs.isEmpty ? nil : plan.repositoryURLs
         self.tasks = plan.tasks
@@ -99,6 +101,7 @@ extension PlanDTO {
         let plan = Plan(
             id: id,
             title: title,
+            icon: icon ?? "folder",
             summary: summary ?? "",
             repositoryURLs: repositoryURLs ?? [],
             createdAt: createdAt,
