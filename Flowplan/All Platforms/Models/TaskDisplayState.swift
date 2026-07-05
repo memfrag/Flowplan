@@ -14,6 +14,7 @@ nonisolated public enum TaskDisplayState: String, Codable, CaseIterable, Sendabl
     case readyToStart
     case inProgress
     case done
+    case closed
 
     public var id: Self { self }
 
@@ -23,6 +24,7 @@ nonisolated public enum TaskDisplayState: String, Codable, CaseIterable, Sendabl
         case .readyToStart: "Ready to Start"
         case .inProgress: "In Progress"
         case .done: "Done"
+        case .closed: "Closed"
         }
     }
 
@@ -33,6 +35,7 @@ nonisolated public enum TaskDisplayState: String, Codable, CaseIterable, Sendabl
         case .readyToStart: "play.circle.fill"
         case .inProgress: "circle.lefthalf.filled"
         case .done: "checkmark.circle.fill"
+        case .closed: "xmark.circle.fill"
         }
     }
 
@@ -43,6 +46,7 @@ nonisolated public enum TaskDisplayState: String, Codable, CaseIterable, Sendabl
         case .readyToStart: .blue
         case .inProgress: .orange
         case .done: .green
+        case .closed: .gray
         }
     }
 

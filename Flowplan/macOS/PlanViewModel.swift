@@ -126,7 +126,7 @@ public final class PlanViewModel {
         }
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !query.isEmpty else { return true }
-        let haystack = ([task.title, task.notes, task.category ?? ""] + task.tags)
+        let haystack = ([task.title, task.details, task.notes, task.category ?? ""] + task.tags)
             .joined(separator: " ")
             .lowercased()
         return haystack.contains(query)
@@ -153,22 +153,24 @@ public final class PlanViewModel {
     }
 
     public func renderSnapshot() -> RenderSnapshot {
-        let ordered = tasks
         guard let plan else {
-            return RenderSnapshot(orderedTasks: ordered, taskByID: [:], displayStateByID: [:], numberByID: [:])
+            return RenderSnapshot(orderedTasks: [], taskByID: [:], displayStateByID: [:], numberByID: [:])
         }
+        // The graph is built from *all* tasks (so closed prerequisites are known to be resolved),
+        // but closed tasks — and the edges touching them — are hidden from the graph canvas.
         let graph = plan.graph
+        let visible = tasks.filter { $0.progress != .closed }
         var taskByID: [UUID: PlanTask] = [:]
         var displayStateByID: [UUID: TaskDisplayState] = [:]
         var numberByID: [UUID: Int] = [:]
-        taskByID.reserveCapacity(ordered.count)
-        for (index, task) in ordered.enumerated() {
+        taskByID.reserveCapacity(visible.count)
+        for (index, task) in visible.enumerated() {
             taskByID[task.id] = task
             displayStateByID[task.id] = graph.displayState(of: task.id)
             numberByID[task.id] = index + 1
         }
         return RenderSnapshot(
-            orderedTasks: ordered,
+            orderedTasks: visible,
             taskByID: taskByID,
             displayStateByID: displayStateByID,
             numberByID: numberByID
@@ -264,6 +266,11 @@ public final class PlanViewModel {
 
     public func reopen(_ task: PlanTask) {
         store?.setProgress(.notStarted, for: task)
+    }
+
+    /// Closes a task: hidden from the graph and treated as resolved for its dependents.
+    public func close(_ task: PlanTask) {
+        store?.setProgress(.closed, for: task)
     }
 
     public func moveTask(_ task: PlanTask, to position: CGPoint) {

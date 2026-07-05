@@ -58,6 +58,12 @@ struct TaskCardView: View {
                         .background(Capsule().fill(.quaternary))
                 }
                 Spacer(minLength: 0)
+                if !task.details.isEmpty {
+                    Label("description", systemImage: "text.alignleft")
+                        .labelStyle(.iconOnly)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
                 if !task.notes.isEmpty {
                     Label("notes", systemImage: "text.bubble")
                         .labelStyle(.iconOnly)

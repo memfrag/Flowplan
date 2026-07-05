@@ -36,23 +36,25 @@ nonisolated public struct TaskGraph: Sendable {
 
     /// Derives the user-facing display state for a task (spec §4.3).
     ///
-    /// - A done task is `.done`.
-    /// - A not-done task with any unfinished prerequisite is `.backlog`.
+    /// - A closed task is `.closed`; a done task is `.done`.
+    /// - An unresolved task with any unresolved prerequisite is `.backlog`.
     /// - Otherwise the display state follows the stored progress.
+    /// A resolved prerequisite (done **or** closed) no longer blocks its dependents.
     public func displayState(of taskID: UUID) -> TaskDisplayState {
-        if progress(of: taskID) == .done {
-            return .done
-        }
+        let progress = progress(of: taskID)
+        if progress == .closed { return .closed }
+        if progress == .done { return .done }
 
-        let hasUnfinishedPrerequisite = prerequisiteIDs(of: taskID).contains { progress(of: $0) != .done }
-        if hasUnfinishedPrerequisite {
+        let hasUnresolvedPrerequisite = prerequisiteIDs(of: taskID).contains { !self.progress(of: $0).isResolved }
+        if hasUnresolvedPrerequisite {
             return .backlog
         }
 
-        switch progress(of: taskID) {
+        switch progress {
         case .notStarted: return .readyToStart
         case .inProgress: return .inProgress
         case .done: return .done
+        case .closed: return .closed
         }
     }
 }

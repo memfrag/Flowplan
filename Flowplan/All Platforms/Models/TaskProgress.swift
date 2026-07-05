@@ -12,6 +12,7 @@ nonisolated public enum TaskProgress: String, Codable, CaseIterable, Sendable, I
     case notStarted
     case inProgress
     case done
+    case closed
 
     public var id: Self { self }
 
@@ -20,6 +21,13 @@ nonisolated public enum TaskProgress: String, Codable, CaseIterable, Sendable, I
         case .notStarted: "Not Started"
         case .inProgress: "In Progress"
         case .done: "Done"
+        case .closed: "Closed"
         }
+    }
+
+    /// Whether this progress resolves a dependency — a resolved prerequisite no longer blocks its
+    /// dependents. Both `done` and `closed` are resolved.
+    public var isResolved: Bool {
+        self == .done || self == .closed
     }
 }

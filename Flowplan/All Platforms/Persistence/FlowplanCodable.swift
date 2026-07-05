@@ -22,6 +22,7 @@ nonisolated public struct PlanDTO: Codable, Sendable {
 nonisolated public struct TaskDTO: Codable, Sendable {
     public var id: UUID
     public var title: String
+    public var details: String? = nil
     public var notes: String
     public var progress: TaskProgress
     public var category: String?
@@ -71,6 +72,7 @@ extension TaskDTO {
     public init(task: PlanTask) {
         self.id = task.id
         self.title = task.title
+        self.details = task.details.isEmpty ? nil : task.details
         self.notes = task.notes
         self.progress = task.progress
         self.category = task.category
@@ -95,6 +97,7 @@ extension PlanDTO {
             PlanTask(
                 id: dto.id,
                 title: dto.title,
+                details: dto.details ?? "",
                 notes: dto.notes,
                 progress: dto.progress,
                 category: dto.category,

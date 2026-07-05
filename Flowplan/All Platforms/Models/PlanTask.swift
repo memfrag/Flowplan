@@ -16,6 +16,10 @@ public final class PlanTask {
     @Attribute(.unique) public var id: UUID
 
     public var title: String
+
+    /// A description of what the task entails (distinct from freeform ``notes``).
+    public var details: String = ""
+
     public var notes: String
 
     /// Backing storage for ``progress``. Stored as a raw string for SwiftData compatibility.
@@ -44,6 +48,7 @@ public final class PlanTask {
     public init(
         id: UUID = UUID(),
         title: String,
+        details: String = "",
         notes: String = "",
         progress: TaskProgress = .notStarted,
         category: String? = nil,
@@ -56,6 +61,7 @@ public final class PlanTask {
     ) {
         self.id = id
         self.title = title
+        self.details = details
         self.notes = notes
         self.progressRaw = progress.rawValue
         self.category = category

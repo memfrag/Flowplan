@@ -68,6 +68,7 @@ struct Sidebar: View {
                 focusRow(.readyToStart, title: "Ready")
                 focusRow(.inProgress, title: "In Progress")
                 focusRow(.done, title: "Done")
+                focusRow(.closed, title: "Closed")
             }
 
             Section("Projects") {
@@ -195,7 +196,8 @@ struct Sidebar: View {
             viewModel.activeFilters = []
         case .focus(let state):
             viewModel.activeFilters = [state]
-            viewModel.viewMode = .graph
+            // Closed tasks aren't drawn on the graph, so show them in the list instead.
+            viewModel.viewMode = (state == .closed) ? .list : .graph
         case nil:
             break
         }

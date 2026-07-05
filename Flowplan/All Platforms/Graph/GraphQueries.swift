@@ -18,9 +18,10 @@ nonisolated extension TaskGraph {
         edges.filter { $0.prerequisiteTaskID == taskID }.map(\.dependentTaskID)
     }
 
-    /// Prerequisites of `taskID` that are not yet Done — i.e. what is currently blocking it.
+    /// Prerequisites of `taskID` that are not yet resolved (neither Done nor Closed) — i.e. what is
+    /// currently blocking it.
     public func blockerIDs(of taskID: UUID) -> [UUID] {
-        prerequisiteIDs(of: taskID).filter { progress(of: $0) != .done }
+        prerequisiteIDs(of: taskID).filter { !progress(of: $0).isResolved }
     }
 
     /// Whether `taskID` is currently Ready to Start.

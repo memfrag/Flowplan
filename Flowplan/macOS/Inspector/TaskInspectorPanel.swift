@@ -89,6 +89,8 @@ struct TaskInspectorPanel: View {
                 backlogExplanation(task)
             }
 
+            descriptionSection(task)
+
             dependencySections(task)
 
             notesSection(task)
@@ -214,6 +216,31 @@ struct TaskInspectorPanel: View {
         }
     }
 
+    // MARK: - Description
+
+    private func descriptionSection(_ task: PlanTask) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Description").font(.headline).foregroundStyle(.secondary)
+            TextEditor(text: detailsBinding(task))
+                .font(.body)
+                .frame(minHeight: 90)
+                .scrollContentBackground(.hidden)
+                .padding(6)
+                .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary))
+                .overlay(alignment: .topLeading) {
+                    if task.details.isEmpty {
+                        Text("What does this task entail?")
+                            .font(.body)
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 14)
+                            .allowsHitTesting(false)
+                    }
+                }
+        }
+        .padding(.horizontal, 8)
+    }
+
     // MARK: - Notes
 
     private func notesSection(_ task: PlanTask) -> some View {
@@ -269,6 +296,13 @@ struct TaskInspectorPanel: View {
         Binding(
             get: { task.title },
             set: { task.title = $0; task.touch(); viewModel.store?.save() }
+        )
+    }
+
+    private func detailsBinding(_ task: PlanTask) -> Binding<String> {
+        Binding(
+            get: { task.details },
+            set: { task.details = $0; task.touch(); viewModel.store?.save() }
         )
     }
 

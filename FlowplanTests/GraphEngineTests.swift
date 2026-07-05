@@ -83,6 +83,15 @@ struct GraphEngineTests {
         }
     }
 
+    // A closed prerequisite is resolved: it no longer blocks its dependents.
+    @Test func closedResolvesDependency() {
+        let a = UUID(), b = UUID()
+        let graph = makeGraph(tasks: [(a, .closed), (b, .notStarted)], edges: [(a, b)])
+        #expect(graph.displayState(of: a) == .closed)
+        #expect(graph.displayState(of: b) == .readyToStart)
+        #expect(graph.blockerIDs(of: b).isEmpty)
+    }
+
     @Test func selfAndDuplicateValidation() {
         let a = UUID(), b = UUID()
         let graph = makeGraph(tasks: [(a, .notStarted), (b, .notStarted)], edges: [(a, b)])

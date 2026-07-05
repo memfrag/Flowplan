@@ -230,7 +230,11 @@ struct GraphCanvasView: View {
             Button("Reopen") { viewModel.reopen(task) }
         case .backlog:
             Button("Start") { viewModel.start(task) }
+        case .closed:
+            Button("Reopen") { viewModel.reopen(task) }
         }
+
+        Button("Close") { viewModel.close(task) }
 
         Divider()
 
