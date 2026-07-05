@@ -27,7 +27,8 @@ struct ProjectManagerView: View {
         "app", "app.gift", "tv", "airplane",
         "checklist", "target", "clock", "person.2", "envelope", "megaphone",
         "dollarsign.circle", "chart.line.uptrend.xyaxis", "graduationcap", "cross.case",
-        "lock", "desktopcomputer", "map", "car", "puzzlepiece", "ladybug"
+        "lock", "desktopcomputer", "map", "car", "puzzlepiece", "ladybug",
+        "macwindow", "laptopcomputer", "printer", "scanner", "pc"
     ]
 
     private var selectedPlan: Plan? {
