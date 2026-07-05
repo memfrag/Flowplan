@@ -162,16 +162,18 @@ struct GraphCanvasView: View {
             let isSelected = viewModel.selectedDependencyID == item.id
             let isHovered = hoveredDependencyID == item.id
             let isActive = isSelected || isHovered
+            // Only reveal (and enable) the delete dot when the pointer is over this connector.
+            let isNear = isActive || (hoverLocation.map { item.bounds.contains($0) } ?? false)
             ZStack {
                 // Large transparent hit area for reliable hover/click.
                 Circle()
                     .fill(Color.white.opacity(0.001))
                     .frame(width: 32, height: 32)
                     .contentShape(Circle())
-                // Visible marker: faint dot at rest, red ✕ when active.
+                // Visible marker: faint dot when near, red ✕ when active.
                 Circle()
-                    .fill(isActive ? Color.red : Color.secondary.opacity(0.45))
-                    .frame(width: isActive ? 20 : 9, height: isActive ? 20 : 9)
+                    .fill(isActive ? Color.red : Color.secondary.opacity(0.5))
+                    .frame(width: isActive ? 20 : 10, height: isActive ? 20 : 10)
                     .overlay(Circle().strokeBorder(.background, lineWidth: isActive ? 1.5 : 0))
                 if isActive {
                     Image(systemName: "xmark")
@@ -182,6 +184,8 @@ struct GraphCanvasView: View {
             .frame(width: 32, height: 32)
             .contentShape(Circle())
             .help("Remove dependency")
+            .opacity(isNear ? 1 : 0)
+            .allowsHitTesting(isNear)
             .onHover { hovering in
                 if hovering { hoveredDependencyID = item.id }
                 else if hoveredDependencyID == item.id { hoveredDependencyID = nil }
@@ -402,7 +406,7 @@ struct GraphCanvasView: View {
         }
     }
 
-    private func dependencyMidpoints(snapshot: PlanViewModel.RenderSnapshot) -> [(id: UUID, point: CGPoint)] {
+    private func dependencyMidpoints(snapshot: PlanViewModel.RenderSnapshot) -> [(id: UUID, point: CGPoint, bounds: CGRect)] {
         guard let plan = viewModel.plan else { return [] }
         return plan.dependencies.compactMap { dependency in
             guard let from = snapshot.taskByID[dependency.prerequisiteTaskID],
@@ -411,7 +415,14 @@ struct GraphCanvasView: View {
             let toP = effectivePosition(of: to)
             let start = CGPoint(x: fromP.x + cardSize.width / 2, y: fromP.y)
             let end = CGPoint(x: toP.x - cardSize.width / 2, y: toP.y)
-            return (dependency.id, CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2))
+            let midpoint = CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2)
+            // Bounding box of the connector (the curve stays within its endpoints' span), padded
+            // for hover tolerance. The delete dot only appears while the pointer is inside this.
+            let rect = CGRect(
+                x: min(start.x, end.x), y: min(start.y, end.y),
+                width: abs(end.x - start.x), height: abs(end.y - start.y)
+            ).insetBy(dx: -14, dy: -14)
+            return (dependency.id, midpoint, rect)
         }
     }
 
