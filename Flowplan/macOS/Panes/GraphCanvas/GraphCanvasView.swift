@@ -66,10 +66,11 @@ struct GraphCanvasView: View {
             .gesture(zoomGesture)
             .onTapGesture { viewModel.clearSelection() }
             .contextMenu { canvasContextMenu }
-            .overlay(alignment: .top) { toastOverlay }
             .overlay {
                 if snapshot.orderedTasks.isEmpty {
                     EmptyGraphState(viewModel: viewModel, viewportCenter: viewportCenter(in: geo.size))
+                } else if isShowingEmptyReadyFocus {
+                    noReadyTasksState
                 }
             }
             .onAppear { viewModel.lastViewportCenter = viewportCenter(in: geo.size) }
@@ -82,6 +83,10 @@ struct GraphCanvasView: View {
                 }
             }
         }
+        // Attached to the GeometryReader (always exactly the visible pane) rather than the inner
+        // ZStack, whose oversized canvas content distorts overlay alignment.
+        .overlay(alignment: .top) { toastOverlay }
+        .overlay(alignment: .bottomLeading) { statusLegend }
     }
 
     // MARK: - Trackpad scrolling
@@ -618,6 +623,54 @@ struct GraphCanvasView: View {
             x: (size.width / 2 - viewModel.canvasOffset.width) / viewModel.zoomScale,
             y: (size.height / 2 - viewModel.canvasOffset.height) / viewModel.zoomScale
         )
+    }
+
+    // MARK: - Status legend
+
+    /// A compact legend of the states drawn on the graph (spec §23 should-have). Closed tasks are
+    /// hidden from the canvas, so they are not listed.
+    private var statusLegend: some View {
+        HStack(spacing: 12) {
+            ForEach([TaskDisplayState.backlog, .readyToStart, .inProgress, .done]) { state in
+                HStack(spacing: 4) {
+                    Image(systemName: state.systemImage)
+                        .foregroundStyle(state.color)
+                        .font(.caption2)
+                    Text(state.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(.regularMaterial, in: Capsule())
+        .overlay(Capsule().strokeBorder(.quaternary))
+        .padding(12)
+        .allowsHitTesting(false)
+    }
+
+    // MARK: - No Ready empty state (spec §15.3)
+
+    /// Whether the Ready focus filter is active but nothing is ready to start.
+    private var isShowingEmptyReadyFocus: Bool {
+        viewModel.activeFilters == [.readyToStart] && viewModel.count(of: .readyToStart) == 0
+    }
+
+    private var noReadyTasksState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "hourglass")
+                .font(.system(size: 36))
+                .foregroundStyle(.secondary)
+            Text("Nothing is ready to start")
+                .font(.title3.weight(.semibold))
+            Text("Complete blockers to unlock more tasks.")
+                .foregroundStyle(.secondary)
+        }
+        .padding(28)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.quaternary))
+        .allowsHitTesting(false)
     }
 
     // MARK: - Toast

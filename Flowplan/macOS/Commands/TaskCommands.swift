@@ -70,6 +70,11 @@ struct TaskCommands: Commands {
 
             Divider()
 
+            Button("Search") { viewModel?.isSearchPresented = true }
+                .keyboardShortcut("f", modifiers: .command)
+
+            Divider()
+
             Button("Zoom In") { zoom(by: 0.1) }
                 .keyboardShortcut("+", modifiers: .command)
             Button("Zoom Out") { zoom(by: -0.1) }

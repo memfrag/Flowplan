@@ -31,7 +31,7 @@ struct Sidebar: View {
                 }
                 .toolbar { toolbarContent }
         }
-        .searchable(text: $viewModel.searchText, prompt: "Search tasks…")
+        .searchable(text: $viewModel.searchText, isPresented: $viewModel.isSearchPresented, prompt: "Search tasks…")
         .onChange(of: selection) { _, newValue in apply(newValue) }
         .alert(
             viewModel.activeAlert?.title ?? "",

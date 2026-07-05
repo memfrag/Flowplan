@@ -10,6 +10,7 @@
 		0B2B16BAA8202991D430834E /* BinaryDataKit in Frameworks */ = {isa = PBXBuildFile; productRef = FEA25B0F230F9324B6A6EEDF /* BinaryDataKit */; };
 		2077FA82BE961A3A3254EC6D /* Zipcode in Frameworks */ = {isa = PBXBuildFile; productRef = F90078781CBCE4A963608E4D /* Zipcode */; };
 		37A344084F4101A4A1F76BAD /* AppRouting in Frameworks */ = {isa = PBXBuildFile; productRef = 98FB7BBEE66322B5C0FD8651 /* AppRouting */; };
+		41504C9F2FFAB80400D4C4B5 /* MCP in Frameworks */ = {isa = PBXBuildFile; productRef = 41504C9E2FFAB80400D4C4B5 /* MCP */; };
 		4D7B69D177C39FB5EA49399A /* MathKit in Frameworks */ = {isa = PBXBuildFile; productRef = A6B43E9298A57DFA253DB06C /* MathKit */; };
 		5B50C03201C330D0593D76A4 /* SwiftUIToolbox in Frameworks */ = {isa = PBXBuildFile; productRef = 9957087DB7339E5B02D90282 /* SwiftUIToolbox */; };
 		6A1510F4C1B456E8A4ECF448 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 62E2EFE4AF05F20CE086B9E6 /* MarkdownUI */; };
@@ -86,6 +87,7 @@
 				F691009A6FC5555687E87321 /* CollectionKit in Frameworks */,
 				97E89D0CEE8F7A7B0D217EAB /* Constructs in Frameworks */,
 				D7594657DBDDC344A761452C /* KeyValueStore in Frameworks */,
+				41504C9F2FFAB80400D4C4B5 /* MCP in Frameworks */,
 				6A1510F4C1B456E8A4ECF448 /* MarkdownUI in Frameworks */,
 				91A700ED27493712DA649C23 /* Markin in Frameworks */,
 				4D7B69D177C39FB5EA49399A /* MathKit in Frameworks */,
@@ -182,6 +184,7 @@
 				80F16116B98B8E72DB55F353 /* URLToolbox */,
 				78C2A3258746C1A10566E407 /* UserDefaultsUI */,
 				F90078781CBCE4A963608E4D /* Zipcode */,
+				41504C9E2FFAB80400D4C4B5 /* MCP */,
 			);
 			productName = Flowplan;
 			productReference = 8768BBEC5CBDE98A3740748F /* Flowplan.app */;
@@ -255,6 +258,7 @@
 				0707C1D419C8AB4310B96148 /* XCRemoteSwiftPackageReference "UserDefaultsUI" */,
 				EE6DE427073ADC2D60FE514F /* XCRemoteSwiftPackageReference "Zipcode" */,
 				CEC2C00A8210EEBF0B0B7977 /* XCLocalSwiftPackageReference "Packages/AppDesign" */,
+				41504C9D2FFAB80300D4C4B5 /* XCRemoteSwiftPackageReference "swift-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2AE80DF3CE127C900605DB77 /* Products */;
@@ -616,6 +620,14 @@
 				version = 2.2.2;
 			};
 		};
+		41504C9D2FFAB80300D4C4B5 /* XCRemoteSwiftPackageReference "swift-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/modelcontextprotocol/swift-sdk.git";
+			requirement = {
+				kind = exactVersion;
+				version = 0.12.1;
+			};
+		};
 		42F02C72A844388B10FD008F /* XCRemoteSwiftPackageReference "URLToolbox" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apparata/URLToolbox.git";
@@ -746,6 +758,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 115ACD12E1B3250F58BC2EE5 /* XCRemoteSwiftPackageReference "Constructs" */;
 			productName = Constructs;
+		};
+		41504C9E2FFAB80400D4C4B5 /* MCP */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 41504C9D2FFAB80300D4C4B5 /* XCRemoteSwiftPackageReference "swift-sdk" */;
+			productName = MCP;
 		};
 		62E2EFE4AF05F20CE086B9E6 /* MarkdownUI */ = {
 			isa = XCSwiftPackageProductDependency;
