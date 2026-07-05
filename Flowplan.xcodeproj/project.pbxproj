@@ -16,6 +16,9 @@
 		6A1510F4C1B456E8A4ECF448 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 62E2EFE4AF05F20CE086B9E6 /* MarkdownUI */; };
 		91A700ED27493712DA649C23 /* Markin in Frameworks */ = {isa = PBXBuildFile; productRef = 9A957C49074229781DEE2F36 /* Markin */; };
 		97E89D0CEE8F7A7B0D217EAB /* Constructs in Frameworks */ = {isa = PBXBuildFile; productRef = 2A47464466F3B212BC0A8A44 /* Constructs */; };
+		AA0000000000000000000005 /* NIOCore in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000002 /* NIOCore */; };
+		AA0000000000000000000006 /* NIOHTTP1 in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000003 /* NIOHTTP1 */; };
+		AA0000000000000000000007 /* NIOPosix in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000004 /* NIOPosix */; };
 		AB20FCC275E1C76FCBDE8DCF /* URLToolbox in Frameworks */ = {isa = PBXBuildFile; productRef = 80F16116B98B8E72DB55F353 /* URLToolbox */; };
 		C19013A641AF05FAB265908F /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A9F2BED83106B30142BBACF6 /* Sparkle */; };
 		C1C92CA6BD60138FFE55EE90 /* SensibleStyling in Frameworks */ = {isa = PBXBuildFile; productRef = 238DDE981309595B75F771ED /* SensibleStyling */; };
@@ -88,6 +91,9 @@
 				97E89D0CEE8F7A7B0D217EAB /* Constructs in Frameworks */,
 				D7594657DBDDC344A761452C /* KeyValueStore in Frameworks */,
 				41504C9F2FFAB80400D4C4B5 /* MCP in Frameworks */,
+				AA0000000000000000000005 /* NIOCore in Frameworks */,
+				AA0000000000000000000006 /* NIOHTTP1 in Frameworks */,
+				AA0000000000000000000007 /* NIOPosix in Frameworks */,
 				6A1510F4C1B456E8A4ECF448 /* MarkdownUI in Frameworks */,
 				91A700ED27493712DA649C23 /* Markin in Frameworks */,
 				4D7B69D177C39FB5EA49399A /* MathKit in Frameworks */,
@@ -185,6 +191,9 @@
 				78C2A3258746C1A10566E407 /* UserDefaultsUI */,
 				F90078781CBCE4A963608E4D /* Zipcode */,
 				41504C9E2FFAB80400D4C4B5 /* MCP */,
+				AA0000000000000000000002 /* NIOCore */,
+				AA0000000000000000000003 /* NIOHTTP1 */,
+				AA0000000000000000000004 /* NIOPosix */,
 			);
 			productName = Flowplan;
 			productReference = 8768BBEC5CBDE98A3740748F /* Flowplan.app */;
@@ -259,6 +268,7 @@
 				EE6DE427073ADC2D60FE514F /* XCRemoteSwiftPackageReference "Zipcode" */,
 				CEC2C00A8210EEBF0B0B7977 /* XCLocalSwiftPackageReference "Packages/AppDesign" */,
 				41504C9D2FFAB80300D4C4B5 /* XCRemoteSwiftPackageReference "swift-sdk" */,
+				AA0000000000000000000001 /* XCRemoteSwiftPackageReference "swift-nio" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2AE80DF3CE127C900605DB77 /* Products */;
@@ -317,6 +327,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"Flowplan/Preview Content\"";
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_BITCODE = NO;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
@@ -473,6 +484,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"Flowplan/Preview Content\"";
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_BITCODE = NO;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
@@ -684,6 +696,14 @@
 				version = 2.9.1;
 			};
 		};
+		AA0000000000000000000001 /* XCRemoteSwiftPackageReference "swift-nio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-nio.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.65.0;
+			};
+		};
 		ACE690E70590E989685D0FEA /* XCRemoteSwiftPackageReference "SensibleStyling" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apparata/SensibleStyling.git";
@@ -818,6 +838,21 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9C7D2F83D23C65A93E7BCB45 /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
+		};
+		AA0000000000000000000002 /* NIOCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA0000000000000000000001 /* XCRemoteSwiftPackageReference "swift-nio" */;
+			productName = NIOCore;
+		};
+		AA0000000000000000000003 /* NIOHTTP1 */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA0000000000000000000001 /* XCRemoteSwiftPackageReference "swift-nio" */;
+			productName = NIOHTTP1;
+		};
+		AA0000000000000000000004 /* NIOPosix */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA0000000000000000000001 /* XCRemoteSwiftPackageReference "swift-nio" */;
+			productName = NIOPosix;
 		};
 		C1EFFD5D20B2124351C3403D /* SettingsUI */ = {
 			isa = XCSwiftPackageProductDependency;

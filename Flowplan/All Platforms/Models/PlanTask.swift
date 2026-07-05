@@ -50,6 +50,10 @@ public final class PlanTask {
     /// The plan this task belongs to. Inverse of ``Plan/tasks``.
     public var plan: Plan?
 
+    /// Comments on this task, e.g. investigation findings or resolution notes.
+    @Relationship(deleteRule: .cascade, inverse: \TaskComment.task)
+    public var comments: [TaskComment] = []
+
     public init(
         id: UUID = UUID(),
         number: Int = 0,

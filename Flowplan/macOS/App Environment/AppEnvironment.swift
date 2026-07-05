@@ -31,6 +31,9 @@ public final class AppEnvironment {
     /// The mutation/validation/seeding layer over the container's main context.
     public let planStore: PlanStore
 
+    /// Owns the embedded MCP server's lifecycle.
+    public let mcpServerManager: MCPServerManager
+
     /// Engineering mode
     internal let engineeringMode: EngineeringMode
 
@@ -47,7 +50,12 @@ public final class AppEnvironment {
     ) {
         self.appSettings = appSettings
         self.modelContainer = modelContainer
-        self.planStore = PlanStore(modelContext: modelContainer.mainContext)
+        let planStore = PlanStore(modelContext: modelContainer.mainContext)
+        self.planStore = planStore
+        self.mcpServerManager = MCPServerManager(
+            appSettings: appSettings,
+            service: MCPTaskService(planStore: planStore)
+        )
         self.engineeringMode = engineeringMode
     }
 }
@@ -56,7 +64,7 @@ extension AppEnvironment {
 
     /// Builds the SwiftData container for Flowplan's models.
     static func makeModelContainer(inMemory: Bool = false) -> ModelContainer {
-        let schema = Schema([Plan.self, PlanTask.self, TaskDependency.self])
+        let schema = Schema([Plan.self, PlanTask.self, TaskDependency.self, TaskComment.self])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
         do {
             return try ModelContainer(for: schema, configurations: [configuration])

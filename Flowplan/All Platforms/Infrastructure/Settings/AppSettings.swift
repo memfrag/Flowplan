@@ -22,7 +22,13 @@ import KeyValueStore
     public enum Key: String {
         /// The preferred color scheme for the app.
         case colorScheme
-        
+
+        /// Whether the embedded MCP server should be running.
+        case mcpServerEnabled
+
+        /// The localhost port the embedded MCP server listens on.
+        case mcpServerPort
+
         // <-- (1 / 3) Add key for new property here
     }
 
@@ -34,7 +40,21 @@ import KeyValueStore
             store.save(colorScheme, for: .colorScheme)
         }
     }
-    
+
+    /// Whether the embedded MCP server should be running.
+    public var mcpServerEnabled: Bool {
+        didSet {
+            store.save(mcpServerEnabled, for: .mcpServerEnabled)
+        }
+    }
+
+    /// The localhost port the embedded MCP server listens on.
+    public var mcpServerPort: Int {
+        didSet {
+            store.save(mcpServerPort, for: .mcpServerPort)
+        }
+    }
+
     // <-- (2 / 3) Add property for new property here
 
     // MARK: Setup
@@ -51,7 +71,9 @@ import KeyValueStore
     public init(store: AnyKeyValueStore<AppSettings.Key>? = nil) {
         self.store = store ?? .defaultStore
         colorScheme = self.store.load(.colorScheme, default: .system)
-        
+        mcpServerEnabled = self.store.load(.mcpServerEnabled, default: false)
+        mcpServerPort = self.store.load(.mcpServerPort, default: 8123)
+
         // <-- (3 / 3) Add initializer for new property here.
     }
 }

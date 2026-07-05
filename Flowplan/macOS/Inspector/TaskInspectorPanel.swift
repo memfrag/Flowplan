@@ -113,6 +113,8 @@ struct TaskInspectorPanel: View {
 
             dependencySections(task)
 
+            commentsSection(task)
+
             notesSection(task)
         }
     }
@@ -259,6 +261,62 @@ struct TaskInspectorPanel: View {
                 }
         }
         .padding(.horizontal, 8)
+    }
+
+    // MARK: - Comments
+
+    @State private var newCommentText: String = ""
+
+    private func commentsSection(_ task: PlanTask) -> some View {
+        let comments = task.comments.sorted { $0.createdAt < $1.createdAt }
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Comments").font(.headline).foregroundStyle(.secondary)
+                Spacer()
+                Text("\(comments.count)").font(.subheadline).foregroundStyle(.tertiary)
+            }
+
+            ForEach(comments) { comment in
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(comment.author)
+                            .font(.caption.weight(.semibold))
+                        Text(Self.formatted(comment.createdAt))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    Text(comment.text)
+                        .font(.callout)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary))
+                .contextMenu {
+                    Button("Delete Comment", role: .destructive) {
+                        viewModel.store?.deleteComment(comment)
+                    }
+                }
+            }
+
+            HStack(spacing: 6) {
+                TextField("Add a comment…", text: $newCommentText, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1...4)
+                    .onSubmit { addComment(to: task) }
+                Button("Add") { addComment(to: task) }
+                    .disabled(newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(.horizontal, 8)
+    }
+
+    private func addComment(to task: PlanTask) {
+        let text = newCommentText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        viewModel.store?.addComment(text, author: "user", to: task)
+        newCommentText = ""
     }
 
     // MARK: - Notes

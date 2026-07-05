@@ -8,24 +8,23 @@ import SwiftUI
 struct SettingsWindow: Scene {
 
     private enum Tabs: Hashable {
-        case general
+        case mcp
     }
 
     var body: some Scene {
         Settings {
             tabs
+                .appEnvironment(.default)
         }
     }
-    
+
     @ViewBuilder var tabs: some View {
         TabView {
-            GeneralSettingsTab()
+            MCPSettingsTab()
                 .tabItem {
-                    Label("General", systemImage: "gear")
+                    Label("MCP Server", systemImage: "server.rack")
                 }
-                .tag(Tabs.general)
+                .tag(Tabs.mcp)
         }
-        .padding(20)
-        .frame(width: 375, height: 150)
-    }    
+    }
 }

@@ -22,6 +22,7 @@ struct MacApp: App {
     
     init() {
         AppDesign.apply()
+        AppEnvironment.default.mcpServerManager.applyAtLaunch()
     }
     
     var body: some Scene {

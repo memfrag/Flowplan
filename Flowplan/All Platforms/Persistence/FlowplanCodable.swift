@@ -35,8 +35,16 @@ nonisolated public struct TaskDTO: Codable, Sendable {
     public var priority: TaskPriority?
     public var estimate: TaskEstimate?
     public var position: PointDTO?
+    public var comments: [CommentDTO]? = nil
     public var createdAt: Date
     public var updatedAt: Date
+}
+
+nonisolated public struct CommentDTO: Codable, Sendable {
+    public var id: UUID
+    public var author: String
+    public var text: String
+    public var createdAt: Date
 }
 
 nonisolated public struct DependencyDTO: Codable, Sendable {
@@ -90,6 +98,10 @@ extension TaskDTO {
         self.priority = task.priority
         self.estimate = task.estimate
         self.position = task.position.map { PointDTO(x: Double($0.x), y: Double($0.y)) }
+        let comments = task.comments.sorted { $0.createdAt < $1.createdAt }.map { comment in
+            CommentDTO(id: comment.id, author: comment.author, text: comment.text, createdAt: comment.createdAt)
+        }
+        self.comments = comments.isEmpty ? nil : comments
         self.createdAt = task.createdAt
         self.updatedAt = task.updatedAt
     }
@@ -128,7 +140,7 @@ extension PlanDTO {
         }
         plan.nextTaskNumber = max(counter, (numberByTaskID.values.max() ?? 0) + 1)
         plan.tasks = tasks.map { dto in
-            PlanTask(
+            let task = PlanTask(
                 id: dto.id,
                 number: numberByTaskID[dto.id] ?? 0,
                 title: dto.title,
@@ -143,6 +155,17 @@ extension PlanDTO {
                 createdAt: dto.createdAt,
                 updatedAt: dto.updatedAt
             )
+            task.comments = (dto.comments ?? []).map { commentDTO in
+                let comment = TaskComment(
+                    id: commentDTO.id,
+                    author: commentDTO.author,
+                    text: commentDTO.text,
+                    createdAt: commentDTO.createdAt
+                )
+                comment.task = task
+                return comment
+            }
+            return task
         }
         plan.dependencies = dependencies.map { dto in
             TaskDependency(

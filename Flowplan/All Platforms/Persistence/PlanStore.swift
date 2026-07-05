@@ -136,6 +136,51 @@ public final class PlanStore {
         save()
     }
 
+    /// Applies non-nil field updates to a task in one save. Double optionals distinguish
+    /// "leave unchanged" (`nil`) from "clear the field" (`.some(nil)`).
+    public func updateTask(
+        _ task: PlanTask,
+        title: String? = nil,
+        details: String? = nil,
+        notes: String? = nil,
+        category: String?? = nil,
+        tags: [String]? = nil,
+        priority: TaskPriority?? = nil,
+        estimate: TaskEstimate?? = nil
+    ) {
+        if let title { task.title = title }
+        if let details { task.details = details }
+        if let notes { task.notes = notes }
+        if let category { task.category = category }
+        if let tags { task.tags = tags }
+        if let priority { task.priority = priority }
+        if let estimate { task.estimate = estimate }
+        task.touch()
+        task.plan?.touch()
+        save()
+    }
+
+    // MARK: - Comments
+
+    @discardableResult
+    public func addComment(_ text: String, author: String, to task: PlanTask) -> TaskComment {
+        let comment = TaskComment(author: author, text: text)
+        comment.task = task
+        task.comments.append(comment)
+        task.touch()
+        task.plan?.touch()
+        save()
+        return comment
+    }
+
+    public func deleteComment(_ comment: TaskComment) {
+        let task = comment.task
+        modelContext.delete(comment)
+        task?.touch()
+        task?.plan?.touch()
+        save()
+    }
+
     public func updatePosition(_ position: CGPoint, for task: PlanTask) {
         task.position = position
         save()

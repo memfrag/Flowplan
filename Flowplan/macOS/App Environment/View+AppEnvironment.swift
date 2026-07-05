@@ -28,6 +28,7 @@ extension View {
         self
             .environment(appEnvironment.appSettings)
             .environment(appEnvironment.planStore)
+            .environment(appEnvironment.mcpServerManager)
             .environment(appEnvironment.engineeringMode)
             .modelContainer(appEnvironment.modelContainer)
     }
@@ -39,6 +40,7 @@ extension View {
         return self
             .environment(appEnvironment.appSettings)
             .environment(appEnvironment.planStore)
+            .environment(appEnvironment.mcpServerManager)
             .environment(appEnvironment.engineeringMode)
             .modelContainer(appEnvironment.modelContainer)
     }

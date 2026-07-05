@@ -10,6 +10,7 @@ struct Sidebar: View {
     @Bindable var viewModel: PlanViewModel
 
     @Environment(PlanStore.self) private var store
+    @Environment(MCPServerManager.self) private var mcpServerManager
     @Environment(\.openWindow) private var openWindow
     @Query(sort: \Plan.createdAt) private var plans: [Plan]
 
@@ -22,6 +23,7 @@ struct Sidebar: View {
                 .listStyle(.sidebar)
                 .frame(minWidth: 200, idealWidth: 220, maxWidth: 320)
                 .safeAreaInset(edge: .top, spacing: 0) { sidebarHeader }
+                .safeAreaInset(edge: .bottom, spacing: 0) { mcpServerStatusFooter }
                 .toolbar { sidebarToolbarContent }
         } detail: {
             detail
@@ -104,6 +106,46 @@ struct Sidebar: View {
                 viewModel.clearSelection()
             }
         )
+    }
+
+    // MARK: - MCP server status (sidebar footer)
+
+    private var mcpServerStatusFooter: some View {
+        SettingsLink {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(mcpStatusColor)
+                    .frame(width: 7, height: 7)
+                Text(mcpStatusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("MCP server — open Settings to configure")
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    private var mcpStatusColor: Color {
+        switch mcpServerManager.status {
+        case .stopped: .secondary
+        case .starting: .yellow
+        case .running: .green
+        case .failed: .red
+        }
+    }
+
+    private var mcpStatusText: String {
+        switch mcpServerManager.status {
+        case .stopped: "MCP Server Off"
+        case .starting: "MCP Server Starting…"
+        case .running(let port): "MCP Server :\(port)"
+        case .failed: "MCP Server Error"
+        }
     }
 
     private func focusRow(_ state: TaskDisplayState, title: String) -> some View {
