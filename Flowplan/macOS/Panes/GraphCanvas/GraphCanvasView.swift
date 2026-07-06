@@ -112,8 +112,12 @@ struct GraphCanvasView: View {
             // A transparent hit layer behind everything: empty-canvas drags land here and either pan
             // (plain drag, in stable screen space) or draw a marquee selection (shift-drag, in canvas
             // content space). Split into two gestures so pan never reads the moving content space.
+            // The hit shape extends far past the content plane (the plane is only as big as the
+            // tasks' bounding box + margin), so panning/marqueeing still works when the viewport
+            // has been panned beyond the content. The *frame* must stay plane-sized — enlarging it
+            // would inflate the ZStack and shift every card's coordinates.
             Color.white.opacity(0.001)
-                .contentShape(Rectangle())
+                .contentShape(Rectangle().inset(by: -25_000))
                 .onTapGesture { viewModel.clearSelection() }
                 .gesture(canvasPanGesture)
                 .simultaneousGesture(canvasMarqueeGesture(snapshot: snapshot))

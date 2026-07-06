@@ -58,7 +58,7 @@ struct MCPSettingsTab: View {
             Label("Starting…", systemImage: "circle.fill")
                 .foregroundStyle(.yellow)
         case .running(let port):
-            Label("Running at http://127.0.0.1:\(port)/mcp", systemImage: "circle.fill")
+            Label("Running at http://127.0.0.1:\(String(port))/mcp", systemImage: "circle.fill")
                 .foregroundStyle(.green)
                 .textSelection(.enabled)
         case .failed(let message):
