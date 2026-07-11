@@ -15,7 +15,7 @@ set -euo pipefail
 # -----------------------------------------------------------------------------
 
 # --- Constants ---
-SCHEME="Flowplan"
+SCHEME="Flowplan (Release)"
 APP_NAME="Flowplan"
 KEYCHAIN_PROFILE="notary"
 SPARKLE_VERSION="2.9.1"
@@ -29,7 +29,6 @@ SPARKLE_TOOLS_DIR="$PROJECT_DIR/Sparkle-tools"
 ARCHIVE_PATH="$BUILD_DIR/$APP_NAME.xcarchive"
 EXPORT_DIR="$BUILD_DIR/export"
 EXPORT_OPTIONS="$SCRIPT_DIR/ExportOptions.plist"
-INFO_PLIST="$PROJECT_DIR/$APP_NAME/Info.plist"
 PBXPROJ="$PROJECT_DIR/$APP_NAME.xcodeproj/project.pbxproj"
 
 # --- Helpers ---
@@ -54,11 +53,10 @@ if [ ! -x "$SPARKLE_TOOLS_DIR/bin/sign_update" ]; then
 fi
 
 # --- Version checking ---
+# Versions live in the build settings (GENERATE_INFOPLIST_FILE = YES injects them into the built
+# app's Info.plist); the source Info.plist is a partial file with no version keys.
 echo "==> Checking version..."
-CURRENT_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$INFO_PLIST" 2>/dev/null || true)
-if [ -z "$CURRENT_VERSION" ]; then
-    CURRENT_VERSION=$(grep 'MARKETING_VERSION' "$PBXPROJ" | head -1 | sed 's/.*= *//;s/ *;.*//' || true)
-fi
+CURRENT_VERSION=$(grep 'MARKETING_VERSION' "$PBXPROJ" | head -1 | sed 's/.*= *//;s/ *;.*//' || true)
 echo "    Current version: $CURRENT_VERSION"
 
 LATEST_TAG=$(gh release view --repo "$GITHUB_REPO" --json tagName -q '.tagName' 2>/dev/null || true)
@@ -89,25 +87,13 @@ fi
 
 if [ "$VERSION" != "$CURRENT_VERSION" ]; then
     echo "==> Updating version to $VERSION..."
-    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$INFO_PLIST" 2>/dev/null \
-        || /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $VERSION" "$INFO_PLIST" \
-        || error "Failed to update CFBundleShortVersionString in Info.plist"
-    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$INFO_PLIST" 2>/dev/null \
-        || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $VERSION" "$INFO_PLIST" \
-        || error "Failed to update CFBundleVersion in Info.plist"
-    sed -i '' "s/MARKETING_VERSION = [^;]*/MARKETING_VERSION = $VERSION/" "$PBXPROJ" || error "Failed to update MARKETING_VERSION in project.pbxproj"
-    sed -i '' "s/CURRENT_PROJECT_VERSION = [^;]*/CURRENT_PROJECT_VERSION = $VERSION/" "$PBXPROJ" || error "Failed to update CURRENT_PROJECT_VERSION in project.pbxproj"
+    sed -i '' "s/MARKETING_VERSION = [^;]*/MARKETING_VERSION = $VERSION/g" "$PBXPROJ" || error "Failed to update MARKETING_VERSION in project.pbxproj"
+    sed -i '' "s/CURRENT_PROJECT_VERSION = [^;]*/CURRENT_PROJECT_VERSION = $VERSION/g" "$PBXPROJ" || error "Failed to update CURRENT_PROJECT_VERSION in project.pbxproj"
     cd "$PROJECT_DIR"
-    git add "$INFO_PLIST" "$PBXPROJ"
+    git add "$PBXPROJ"
     git commit -m "Bump version to $VERSION"
     git push origin HEAD
     echo "    Version updated and pushed."
-else
-    # Ensure Info.plist matches even if no bump needed
-    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$INFO_PLIST" 2>/dev/null \
-        || /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $VERSION" "$INFO_PLIST" 2>/dev/null || true
-    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$INFO_PLIST" 2>/dev/null \
-        || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $VERSION" "$INFO_PLIST" 2>/dev/null || true
 fi
 
 TAG="$VERSION"
