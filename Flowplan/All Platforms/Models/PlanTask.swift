@@ -45,6 +45,9 @@ public final class PlanTask {
     public var positionX: Double?
     public var positionY: Double?
 
+    /// An optional deadline for the task, used by the timeline view and overdue indicators.
+    public var dueDate: Date?
+
     public var createdAt: Date = Date.now
     public var updatedAt: Date = Date.now
 
@@ -73,6 +76,7 @@ public final class PlanTask {
         priority: TaskPriority? = nil,
         estimate: TaskEstimate? = nil,
         position: CGPoint? = nil,
+        dueDate: Date? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now
     ) {
@@ -89,6 +93,7 @@ public final class PlanTask {
         self.estimateUnitRaw = estimate?.unit.rawValue
         self.positionX = position.map { Double($0.x) }
         self.positionY = position.map { Double($0.y) }
+        self.dueDate = dueDate
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.commentsStorage = nil
@@ -136,5 +141,12 @@ extension PlanTask {
     /// Marks the task as modified now. Call after mutating any user-facing field.
     public func touch() {
         updatedAt = .now
+    }
+
+    /// Whether the task's due date is in the past and the task isn't yet resolved (Done/Closed).
+    public var isOverdue: Bool {
+        guard let dueDate, !progress.isResolved else { return false }
+        let calendar = Calendar.current
+        return calendar.startOfDay(for: dueDate) < calendar.startOfDay(for: .now)
     }
 }

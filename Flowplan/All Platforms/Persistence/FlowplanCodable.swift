@@ -35,6 +35,7 @@ nonisolated public struct TaskDTO: Codable, Sendable {
     public var priority: TaskPriority?
     public var estimate: TaskEstimate?
     public var position: PointDTO?
+    public var dueDate: Date? = nil
     public var comments: [CommentDTO]? = nil
     public var createdAt: Date
     public var updatedAt: Date
@@ -98,6 +99,7 @@ extension TaskDTO {
         self.priority = task.priority
         self.estimate = task.estimate
         self.position = task.position.map { PointDTO(x: Double($0.x), y: Double($0.y)) }
+        self.dueDate = task.dueDate
         let comments = task.comments.sorted { $0.createdAt < $1.createdAt }.map { comment in
             CommentDTO(id: comment.id, author: comment.author, text: comment.text, createdAt: comment.createdAt)
         }
@@ -152,6 +154,7 @@ extension PlanDTO {
                 priority: dto.priority,
                 estimate: dto.estimate,
                 position: dto.position.map { CGPoint(x: $0.x, y: $0.y) },
+                dueDate: dto.dueDate,
                 createdAt: dto.createdAt,
                 updatedAt: dto.updatedAt
             )

@@ -192,6 +192,7 @@ private struct BoardTaskCard: View {
                             .background(Capsule().fill(.quaternary))
                     }
                     Spacer(minLength: 0)
+                    DueDateBadge(task: task)
                     if let estimate = task.estimate {
                         HStack(spacing: 3) {
                             Image(systemName: "clock")
@@ -219,6 +220,6 @@ private struct BoardTaskCard: View {
     }
 
     private var hasBottomMetadata: Bool {
-        (task.category?.isEmpty == false) || task.estimate != nil
+        (task.category?.isEmpty == false) || task.estimate != nil || task.dueDate != nil
     }
 }

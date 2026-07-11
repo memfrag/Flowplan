@@ -100,6 +100,7 @@ nonisolated enum FlowplanMCPServerFactory {
                 priority: optionalString("priority"),
                 estimateValue: optionalDouble("estimate_value"),
                 estimateUnit: optionalString("estimate_unit"),
+                dueDate: optionalString("due_date"),
                 prerequisites: optionalStringArray("prerequisites")
             )
             return MCPJSON.string(snapshot)
@@ -117,7 +118,8 @@ nonisolated enum FlowplanMCPServerFactory {
                 tags: optionalStringArray("tags"),
                 priority: optionalString("priority"),
                 estimateValue: optionalDouble("estimate_value"),
-                estimateUnit: optionalString("estimate_unit")
+                estimateUnit: optionalString("estimate_unit"),
+                dueDate: optionalString("due_date")
             )
             return MCPJSON.string(snapshot)
 

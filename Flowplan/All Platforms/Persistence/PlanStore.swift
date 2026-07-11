@@ -146,7 +146,8 @@ public final class PlanStore {
         category: String?? = nil,
         tags: [String]? = nil,
         priority: TaskPriority?? = nil,
-        estimate: TaskEstimate?? = nil
+        estimate: TaskEstimate?? = nil,
+        dueDate: Date?? = nil
     ) {
         if let title { task.title = title }
         if let details { task.details = details }
@@ -155,6 +156,7 @@ public final class PlanStore {
         if let tags { task.tags = tags }
         if let priority { task.priority = priority }
         if let estimate { task.estimate = estimate }
+        if let dueDate { task.dueDate = dueDate }
         task.touch()
         task.plan?.touch()
         save()

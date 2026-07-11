@@ -69,6 +69,7 @@ final class MCPTaskService {
         priority: String?,
         estimateValue: Double?,
         estimateUnit: String?,
+        dueDate: String?,
         prerequisites: [String]?
     ) throws -> TaskSnapshot {
         let plan = try resolvePlan(project)
@@ -79,6 +80,7 @@ final class MCPTaskService {
 
         let estimate = try makeEstimate(value: estimateValue, unit: estimateUnit)
         let parsedPriority = try priority.map { try parsePriority($0) }
+        let parsedDueDate = try dueDate.map { try parseDueDate($0) }
 
         let task = planStore.createTask(in: plan, title: trimmedTitle, at: nextCanvasPosition(in: plan))
         planStore.updateTask(
@@ -88,7 +90,8 @@ final class MCPTaskService {
             category: category.map { .some($0) },
             tags: tags,
             priority: parsedPriority.map { .some($0) },
-            estimate: estimate.map { .some($0) }
+            estimate: estimate.map { .some($0) },
+            dueDate: parsedDueDate.map { .some($0) }
         )
 
         var dependencyErrors: [String] = []
@@ -124,7 +127,8 @@ final class MCPTaskService {
         tags: [String]?,
         priority: String?,
         estimateValue: Double?,
-        estimateUnit: String?
+        estimateUnit: String?,
+        dueDate: String?
     ) throws -> TaskSnapshot {
         let plan = try resolvePlan(project)
         let planTask = try resolveTask(in: plan, query: task)
@@ -134,6 +138,13 @@ final class MCPTaskService {
             categoryUpdate = category.lowercased() == "none" ? .some(nil) : .some(category)
         } else {
             categoryUpdate = nil
+        }
+
+        let dueDateUpdate: Date??
+        if let dueDate {
+            dueDateUpdate = dueDate.lowercased() == "none" ? .some(nil) : .some(try parseDueDate(dueDate))
+        } else {
+            dueDateUpdate = nil
         }
 
         let priorityUpdate: TaskPriority??
@@ -162,7 +173,8 @@ final class MCPTaskService {
             category: categoryUpdate,
             tags: tags,
             priority: priorityUpdate,
-            estimate: estimateUpdate
+            estimate: estimateUpdate,
+            dueDate: dueDateUpdate
         )
         return makeTaskSnapshot(planTask, in: plan)
     }
@@ -318,6 +330,23 @@ final class MCPTaskService {
         return TaskEstimate(value: value, unit: parsedUnit)
     }
 
+    /// Parses an ISO 8601 date. Accepts a plain `YYYY-MM-DD` (normalized to the start of that day)
+    /// or a full ISO 8601 timestamp.
+    private func parseDueDate(_ value: String) throws -> Date {
+        let trimmed = value.trimmingCharacters(in: .whitespaces)
+        let dayFormatter = DateFormatter()
+        dayFormatter.calendar = Calendar(identifier: .iso8601)
+        dayFormatter.dateFormat = "yyyy-MM-dd"
+        dayFormatter.timeZone = .current
+        if let date = dayFormatter.date(from: trimmed) {
+            return Calendar.current.startOfDay(for: date)
+        }
+        if let date = ISO8601DateFormatter().date(from: trimmed) {
+            return date
+        }
+        throw MCPToolError.invalidArgument("Unknown date \"\(value)\". Use YYYY-MM-DD (or an ISO 8601 timestamp).")
+    }
+
     private func priorityRank(_ priority: TaskPriority?) -> Int {
         switch priority {
         case .high: 2
@@ -378,6 +407,8 @@ final class MCPTaskService {
             tags: task.tags,
             priority: task.priority?.rawValue,
             estimate: task.estimate?.displayText,
+            dueDate: task.dueDate,
+            overdue: task.isOverdue,
             blockedBy: graph.blockerIDs(of: task.id).compactMap(ref),
             prerequisites: graph.prerequisiteIDs(of: task.id).compactMap(ref),
             dependents: graph.dependentIDs(of: task.id).compactMap(ref),

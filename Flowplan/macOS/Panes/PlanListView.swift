@@ -96,6 +96,15 @@ struct PlanListView: View {
             Text(task.estimate?.displayText ?? "—")
                 .foregroundStyle(.secondary)
                 .frame(width: 80, alignment: .leading)
+
+            Group {
+                if task.dueDate != nil {
+                    DueDateBadge(task: task)
+                } else {
+                    Text("—").foregroundStyle(.tertiary)
+                }
+            }
+            .frame(width: 80, alignment: .leading)
         }
         .lineLimit(1)
     }

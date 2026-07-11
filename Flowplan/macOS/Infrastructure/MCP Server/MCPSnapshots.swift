@@ -43,6 +43,8 @@ nonisolated struct TaskSnapshot: Codable, Sendable {
     var tags: [String]
     var priority: String?
     var estimate: String?
+    var dueDate: Date?
+    var overdue: Bool
     var blockedBy: [TaskRef]
     var prerequisites: [TaskRef]
     var dependents: [TaskRef]

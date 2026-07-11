@@ -88,6 +88,11 @@ struct TaskInspectorPanel: View {
                 }
 
                 GridRow {
+                    InspectorLabel("Due Date")
+                    dueDateControl(task)
+                }
+
+                GridRow {
                     InspectorLabel("Tags")
                     InspectorTextValue(task.tags.isEmpty ? "—" : task.tags.joined(separator: ", "))
                 }
@@ -332,6 +337,48 @@ struct TaskInspectorPanel: View {
                 .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary))
         }
         .padding(.horizontal, 8)
+    }
+
+    // MARK: - Due date
+
+    @ViewBuilder
+    private func dueDateControl(_ task: PlanTask) -> some View {
+        HStack(spacing: 6) {
+            if task.dueDate != nil {
+                DatePicker("", selection: dueDateBinding(task), displayedComponents: [.date])
+                    .labelsHidden()
+                    .datePickerStyle(.compact)
+                if task.isOverdue {
+                    Text("Overdue")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.red)
+                }
+                Spacer()
+                Button {
+                    viewModel.store?.updateTask(task, dueDate: .some(nil))
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("Clear due date")
+            } else {
+                Button("Set Due Date…") {
+                    let today = Calendar.current.startOfDay(for: .now)
+                    viewModel.store?.updateTask(task, dueDate: .some(today))
+                }
+                .buttonStyle(.link)
+                Spacer()
+            }
+        }
+        .padding(.trailing, 8)
+    }
+
+    private func dueDateBinding(_ task: PlanTask) -> Binding<Date> {
+        Binding(
+            get: { task.dueDate ?? Calendar.current.startOfDay(for: .now) },
+            set: { viewModel.store?.updateTask(task, dueDate: .some($0)) }
+        )
     }
 
     // MARK: - Pickers

@@ -71,6 +71,7 @@ nonisolated enum MCPToolCatalog {
                     "priority": ["type": "string", "enum": ["low", "medium", "high"]],
                     "estimate_value": ["type": "number"],
                     "estimate_unit": ["type": "string", "enum": ["minutes", "hours", "days"]],
+                    "due_date": ["type": "string", "description": "Deadline as YYYY-MM-DD (or ISO 8601)"],
                     "prerequisites": [
                         "type": "array",
                         "items": ["type": "string"],
@@ -95,7 +96,8 @@ nonisolated enum MCPToolCatalog {
                     "tags": ["type": "array", "items": ["type": "string"]],
                     "priority": ["type": "string", "enum": ["low", "medium", "high", "none"]],
                     "estimate_value": ["type": "number"],
-                    "estimate_unit": ["type": "string", "enum": ["minutes", "hours", "days", "none"]]
+                    "estimate_unit": ["type": "string", "enum": ["minutes", "hours", "days", "none"]],
+                    "due_date": ["type": "string", "description": "YYYY-MM-DD / ISO 8601, or \"none\" to clear"]
                 ],
                 "required": ["project", "task"]
             ])
