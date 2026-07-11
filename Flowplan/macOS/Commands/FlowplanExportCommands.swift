@@ -21,6 +21,7 @@ struct FlowplanExportCommands: Commands {
                 Button("Export as Flowplan…") { export(.flowplan) }
                 Button("Export as Markdown…") { export(.markdown) }
                 Button("Export Graph as PNG…") { export(.png) }
+                Button("Export Graph as PDF…") { export(.pdf) }
             }
             .disabled(viewModel?.plan == nil)
             .fileExporter(
@@ -36,7 +37,7 @@ struct FlowplanExportCommands: Commands {
         }
     }
 
-    private enum ExportKind { case flowplan, markdown, png }
+    private enum ExportKind { case flowplan, markdown, png, pdf }
 
     private func export(_ kind: ExportKind) {
         guard let plan = viewModel?.plan else { return }
@@ -58,6 +59,11 @@ struct FlowplanExportCommands: Commands {
             document = ExportDocument(data: data)
             contentType = .png
             filename = base
+        case .pdf:
+            guard let data = renderPDF(for: plan) else { return }
+            document = ExportDocument(data: data)
+            contentType = .pdf
+            filename = base
         }
         isExporting = true
     }
@@ -69,5 +75,25 @@ struct FlowplanExportCommands: Commands {
         guard let cgImage = renderer.cgImage else { return nil }
         let bitmap = NSBitmapImageRep(cgImage: cgImage)
         return bitmap.representation(using: .png, properties: [:])
+    }
+
+    /// Renders the graph as a single-page **vector** PDF (crisp at any zoom), by drawing the same
+    /// SwiftUI snapshot into a PDF `CGContext`.
+    @MainActor
+    private func renderPDF(for plan: Plan) -> Data? {
+        let renderer = ImageRenderer(content: GraphSnapshotView(plan: plan))
+        let data = NSMutableData()
+        var didRender = false
+        renderer.render { size, renderInContext in
+            var mediaBox = CGRect(origin: .zero, size: size)
+            guard let consumer = CGDataConsumer(data: data as CFMutableData),
+                  let pdfContext = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else { return }
+            pdfContext.beginPDFPage(nil)
+            renderInContext(pdfContext)
+            pdfContext.endPDFPage()
+            pdfContext.closePDF()
+            didRender = true
+        }
+        return didRender ? (data as Data) : nil
     }
 }

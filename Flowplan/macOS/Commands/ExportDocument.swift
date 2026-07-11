@@ -11,10 +11,10 @@ extension UTType {
 }
 
 /// A minimal `FileDocument` that writes pre-rendered `Data` for a chosen content type. Used for
-/// exporting `.flowplan`/JSON, Markdown, and PNG (spec §18).
+/// exporting `.flowplan`/JSON, Markdown, and PNG/PDF of the graph (spec §18).
 struct ExportDocument: FileDocument {
 
-    static let readableContentTypes: [UTType] = [.flowplan, .json, .plainText, .png]
+    static let readableContentTypes: [UTType] = [.flowplan, .json, .plainText, .png, .pdf]
 
     var data: Data
 
