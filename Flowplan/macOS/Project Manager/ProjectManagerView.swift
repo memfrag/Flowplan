@@ -15,6 +15,16 @@ struct ProjectManagerView: View {
     @State private var renamingPlan: Plan?
     @State private var renameText: String = ""
 
+    /// The repository URL currently being imported (drives the per-row spinner), if any.
+    @State private var importingRepo: String?
+    @State private var importAlert: ImportAlert?
+
+    private struct ImportAlert: Identifiable {
+        let id = UUID()
+        let title: String
+        let message: String
+    }
+
     /// SF Symbols offered as project icons.
     private static let iconChoices = [
         "folder", "tray.full", "shippingbox", "cube", "square.grid.2x2",
@@ -171,6 +181,7 @@ struct ProjectManagerView: View {
                             }
                             .help("Open in browser")
                         }
+                        importButton(plan: plan, repoURL: plan.repositoryURLs[index])
                         Button(role: .destructive) {
                             removeRepo(plan, at: index)
                         } label: {
@@ -197,6 +208,51 @@ struct ProjectManagerView: View {
         }
         .formStyle(.grouped)
         .navigationTitle(plan.title.isEmpty ? "Untitled Plan" : plan.title)
+        .alert(
+            importAlert?.title ?? "",
+            isPresented: Binding(get: { importAlert != nil }, set: { if !$0 { importAlert = nil } }),
+            presenting: importAlert
+        ) { _ in
+            Button("OK", role: .cancel) {}
+        } message: { alert in
+            Text(alert.message)
+        }
+    }
+
+    // MARK: - GitHub import
+
+    /// An "Import Issues" control, shown only for rows that parse as a GitHub repository.
+    @ViewBuilder
+    private func importButton(plan: Plan, repoURL: String) -> some View {
+        if GitHubClient.parseRepo(from: repoURL) != nil {
+            if importingRepo == repoURL {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Button {
+                    runImport(plan: plan, repoURL: repoURL)
+                } label: {
+                    Image(systemName: "square.and.arrow.down")
+                }
+                .buttonStyle(.borderless)
+                .help("Import issues from this repository")
+                .disabled(importingRepo != nil)
+            }
+        }
+    }
+
+    private func runImport(plan: Plan, repoURL: String) {
+        importingRepo = repoURL
+        let service = GitHubImportService(planStore: store)
+        Task {
+            defer { importingRepo = nil }
+            do {
+                let summary = try await service.importIssues(from: repoURL, into: plan)
+                importAlert = ImportAlert(title: "Import Complete", message: summary.message)
+            } catch {
+                importAlert = ImportAlert(title: "Import Failed", message: error.localizedDescription)
+            }
+        }
     }
 
     // MARK: - Helpers

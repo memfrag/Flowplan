@@ -183,6 +183,17 @@ public final class PlanStore {
         save()
     }
 
+    /// Links a task to the external system it was imported from (e.g. GitHub). Used by importers to
+    /// stamp identity so re-import can match and update in place rather than duplicate.
+    public func setExternalReference(source: String?, id: String?, url: String?, for task: PlanTask) {
+        task.externalSource = source
+        task.externalID = id
+        task.externalURL = url
+        task.touch()
+        task.plan?.touch()
+        save()
+    }
+
     // MARK: - Comments
 
     @discardableResult

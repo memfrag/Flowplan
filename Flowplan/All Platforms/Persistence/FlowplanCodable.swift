@@ -37,6 +37,9 @@ nonisolated public struct TaskDTO: Codable, Sendable {
     public var position: PointDTO?
     public var dueDate: Date? = nil
     public var comments: [CommentDTO]? = nil
+    public var externalSource: String? = nil
+    public var externalID: String? = nil
+    public var externalURL: String? = nil
     public var createdAt: Date
     public var updatedAt: Date
 }
@@ -104,6 +107,9 @@ extension TaskDTO {
             CommentDTO(id: comment.id, author: comment.author, text: comment.text, createdAt: comment.createdAt)
         }
         self.comments = comments.isEmpty ? nil : comments
+        self.externalSource = task.externalSource
+        self.externalID = task.externalID
+        self.externalURL = task.externalURL
         self.createdAt = task.createdAt
         self.updatedAt = task.updatedAt
     }
@@ -155,6 +161,9 @@ extension PlanDTO {
                 estimate: dto.estimate,
                 position: dto.position.map { CGPoint(x: $0.x, y: $0.y) },
                 dueDate: dto.dueDate,
+                externalSource: dto.externalSource,
+                externalID: dto.externalID,
+                externalURL: dto.externalURL,
                 createdAt: dto.createdAt,
                 updatedAt: dto.updatedAt
             )

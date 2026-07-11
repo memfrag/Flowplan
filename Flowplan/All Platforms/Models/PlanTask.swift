@@ -51,6 +51,18 @@ public final class PlanTask {
     public var createdAt: Date = Date.now
     public var updatedAt: Date = Date.now
 
+    /// Identifies the external system this task was imported from, e.g. `"github"`. `nil` for tasks
+    /// created inside Flowplan. Enables idempotent re-import (match by ``externalSource`` +
+    /// ``externalID``) and a "back to source" link.
+    public var externalSource: String?
+
+    /// A stable identifier within ``externalSource`` — for GitHub, `"owner/repo#number"`, unique
+    /// across repositories associated with one plan.
+    public var externalID: String?
+
+    /// A canonical web URL for the external item (e.g. the issue's `html_url`).
+    public var externalURL: String?
+
     /// The plan this task belongs to. Inverse of ``Plan/tasks``.
     public var plan: Plan?
 
@@ -77,6 +89,9 @@ public final class PlanTask {
         estimate: TaskEstimate? = nil,
         position: CGPoint? = nil,
         dueDate: Date? = nil,
+        externalSource: String? = nil,
+        externalID: String? = nil,
+        externalURL: String? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now
     ) {
@@ -94,6 +109,9 @@ public final class PlanTask {
         self.positionX = position.map { Double($0.x) }
         self.positionY = position.map { Double($0.y) }
         self.dueDate = dueDate
+        self.externalSource = externalSource
+        self.externalID = externalID
+        self.externalURL = externalURL
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.commentsStorage = nil

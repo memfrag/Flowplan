@@ -8,6 +8,7 @@ import SwiftUI
 struct SettingsWindow: Scene {
 
     private enum Tabs: Hashable {
+        case github
         case mcp
     }
 
@@ -20,6 +21,12 @@ struct SettingsWindow: Scene {
 
     @ViewBuilder var tabs: some View {
         TabView {
+            GitHubSettingsTab()
+                .tabItem {
+                    Label("GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
+                }
+                .tag(Tabs.github)
+
             MCPSettingsTab()
                 .tabItem {
                     Label("MCP Server", systemImage: "server.rack")
