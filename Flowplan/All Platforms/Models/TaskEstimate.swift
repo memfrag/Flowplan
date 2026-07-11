@@ -14,6 +14,15 @@ nonisolated public struct TaskEstimate: Codable, Hashable, Sendable {
         self.unit = unit
     }
 
+    /// The estimate expressed in hours (a canonical unit for duration math like the critical path).
+    public var hours: Double {
+        switch unit {
+        case .minutes: value / 60
+        case .hours: value
+        case .days: value * 24
+        }
+    }
+
     /// A short human-readable form, e.g. "3 days" or "1 hour".
     public var displayText: String {
         let rounded = value.rounded() == value ? String(Int(value)) : String(value)

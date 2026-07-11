@@ -29,6 +29,15 @@ nonisolated struct CommentSnapshot: Codable, Sendable {
     var createdAt: Date
 }
 
+nonisolated struct CriticalPathSnapshot: Codable, Sendable {
+    /// Human-readable total duration, e.g. "5 days".
+    var totalDuration: String
+    var totalDurationHours: Double
+    var taskCount: Int
+    /// The critical chain in dependency order (prerequisite → dependent).
+    var path: [TaskRef]
+}
+
 nonisolated struct TaskSnapshot: Codable, Sendable {
     var id: UUID
     var number: Int

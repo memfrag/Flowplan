@@ -57,6 +57,17 @@ nonisolated enum MCPToolCatalog {
             ])
         ),
         Tool(
+            name: "critical_path",
+            description: "Compute the critical path: the longest-duration chain of dependent tasks that determines the project's minimum completion time. Tasks are weighted by their estimate (unestimated tasks assumed one day). Returns the ordered chain and total duration.",
+            inputSchema: .object([
+                "type": "object",
+                "properties": [
+                    "project": ["type": "string", "description": "Project title or UUID"]
+                ],
+                "required": ["project"]
+            ])
+        ),
+        Tool(
             name: "create_task",
             description: "Create a new task in a project. Optionally wire it to prerequisites by task reference.",
             inputSchema: .object([

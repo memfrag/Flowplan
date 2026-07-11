@@ -229,6 +229,16 @@ struct Sidebar: View {
                 Label("Auto Layout", systemImage: "wand.and.stars")
             }
             .disabled(viewModel.plan == nil || viewModel.viewMode != .graph || viewModel.showOverview)
+
+            Button {
+                viewModel.viewMode = .graph
+                viewModel.showCriticalPath.toggle()
+            } label: {
+                Label("Critical Path", systemImage: viewModel.showCriticalPath ? "bolt.horizontal.fill" : "bolt.horizontal")
+            }
+            .foregroundStyle(viewModel.showCriticalPath ? Color.orange : Color.primary)
+            .help("Highlight the critical path")
+            .disabled(viewModel.plan == nil)
         }
 
         ToolbarSpacer(.flexible)

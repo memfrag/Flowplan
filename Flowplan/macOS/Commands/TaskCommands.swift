@@ -72,6 +72,15 @@ struct TaskCommands: Commands {
 
             Divider()
 
+            Button(viewModel?.showCriticalPath == true ? "Hide Critical Path" : "Show Critical Path") {
+                viewModel?.viewMode = .graph
+                viewModel?.showCriticalPath.toggle()
+            }
+            .keyboardShortcut("p", modifiers: [.command, .shift])
+            .disabled(viewModel?.plan == nil)
+
+            Divider()
+
             Button("Search") { viewModel?.isSearchPresented = true }
                 .keyboardShortcut("f", modifiers: .command)
             Button("Command Palette…") { viewModel?.isCommandPalettePresented = true }

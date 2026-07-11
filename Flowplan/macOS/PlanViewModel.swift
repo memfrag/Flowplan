@@ -60,7 +60,10 @@ public final class PlanViewModel {
     public var showOverview: Bool = false
 
     public var viewMode: PlanViewMode = .graph {
-        didSet { showOverview = false }
+        didSet {
+            showOverview = false
+            if viewMode != .graph { showCriticalPath = false }
+        }
     }
     /// The set of currently selected tasks. Multi-selection is driven by shift-clicking cards or
     /// shift-dragging a marquee on the canvas.
@@ -81,6 +84,9 @@ public final class PlanViewModel {
 
     /// Presents the command palette overlay (⌘K).
     public var isCommandPalettePresented: Bool = false
+
+    /// Highlights the critical path on the graph (dims off-path tasks) when true.
+    public var showCriticalPath: Bool = false
 
     /// Focus filters; when non-empty, non-matching tasks are dimmed (spec §11.2).
     public var activeFilters: Set<TaskDisplayState> = []
@@ -376,6 +382,29 @@ public final class PlanViewModel {
 
     public func moveTask(_ task: PlanTask, to position: CGPoint) {
         store?.updatePosition(position, for: task)
+    }
+
+    // MARK: - Critical path
+
+    /// Runs a Critical Path Method analysis over the active plan, weighting tasks by their estimate
+    /// (unestimated tasks use a nominal one-day duration).
+    public func criticalPathResult() -> CriticalPathResult {
+        guard let plan else { return CriticalPathResult() }
+        return plan.graph.criticalPath(durations: CriticalPathDuration.durations(for: plan.tasks))
+    }
+
+    /// A short human-readable form of a duration in hours, e.g. "3 days" or "5 hours".
+    public static func formatDurationHours(_ hours: Double) -> String {
+        func trim(_ value: Double) -> String {
+            let rounded = (value * 10).rounded() / 10
+            return rounded == rounded.rounded() ? String(Int(rounded)) : String(rounded)
+        }
+        if hours >= 24 {
+            let days = (hours / 24 * 10).rounded() / 10
+            return "\(trim(hours / 24)) day\(days == 1 ? "" : "s")"
+        }
+        let rounded = (hours * 10).rounded() / 10
+        return "\(trim(hours)) hour\(rounded == 1 ? "" : "s")"
     }
 
     // MARK: - Dependency actions

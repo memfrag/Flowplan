@@ -299,6 +299,15 @@ struct CommandPaletteView: View {
             ) { viewModel.autoLayout() })
 
             items.append(PaletteItem(
+                id: "action.criticalPath",
+                title: viewModel.showCriticalPath ? "Hide Critical Path" : "Show Critical Path",
+                subtitle: nil, systemImage: "bolt.horizontal", keywords: "cpm bottleneck slack longest analysis"
+            ) {
+                viewModel.viewMode = .graph
+                viewModel.showCriticalPath.toggle()
+            })
+
+            items.append(PaletteItem(
                 id: "action.resetZoom", title: "Reset Zoom",
                 subtitle: "⌘0", systemImage: "1.magnifyingglass", keywords: "100%"
             ) { viewModel.zoomScale = 1 })

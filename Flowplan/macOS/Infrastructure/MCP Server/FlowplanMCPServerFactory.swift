@@ -87,6 +87,10 @@ nonisolated enum FlowplanMCPServerFactory {
             let project = try requireString("project")
             return MCPJSON.string(try await service.nextReadyTasks(project: project))
 
+        case "critical_path":
+            let project = try requireString("project")
+            return MCPJSON.string(try await service.criticalPath(project: project))
+
         case "create_task":
             let project = try requireString("project")
             let title = try requireString("title")

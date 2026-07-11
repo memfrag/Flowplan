@@ -58,6 +58,23 @@ final class MCPTaskService {
             .map { makeTaskSnapshot($0, in: plan) }
     }
 
+    /// The critical path: the longest-duration chain of dependent tasks that sets the project length.
+    func criticalPath(project: String) throws -> CriticalPathSnapshot {
+        let plan = try resolvePlan(project)
+        let graph = plan.graph
+        let result = graph.criticalPath(durations: CriticalPathDuration.durations(for: plan.tasks))
+        let path = result.orderedPath.compactMap { id -> TaskRef? in
+            guard let task = plan.task(id: id) else { return nil }
+            return TaskRef(number: task.number, title: task.title, state: graph.displayState(of: task.id).mcpValue)
+        }
+        return CriticalPathSnapshot(
+            totalDuration: PlanViewModel.formatDurationHours(result.totalDuration),
+            totalDurationHours: result.totalDuration,
+            taskCount: path.count,
+            path: path
+        )
+    }
+
     @discardableResult
     func createTask(
         project: String,

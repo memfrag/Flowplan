@@ -86,7 +86,40 @@ struct GraphCanvasView: View {
         // Attached to the GeometryReader (always exactly the visible pane) rather than the inner
         // ZStack, whose oversized canvas content distorts overlay alignment.
         .overlay(alignment: .top) { toastOverlay }
+        .overlay(alignment: .top) { criticalPathBanner }
         .overlay(alignment: .bottomLeading) { statusLegend }
+    }
+
+    // MARK: - Critical path banner
+
+    @ViewBuilder
+    private var criticalPathBanner: some View {
+        if viewModel.showCriticalPath {
+            let result = viewModel.criticalPathResult()
+            HStack(spacing: 8) {
+                Image(systemName: "bolt.horizontal.fill")
+                    .foregroundStyle(.orange)
+                if result.isEmpty {
+                    Text("No critical path — add dependencies and estimates.")
+                } else {
+                    Text("Critical path: \(result.orderedPath.count) tasks · ~\(PlanViewModel.formatDurationHours(result.totalDuration))")
+                        .fontWeight(.medium)
+                }
+                Button {
+                    viewModel.showCriticalPath = false
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
+            .font(.callout)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(.regularMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(.quaternary))
+            .padding(.top, 12)
+        }
     }
 
     // MARK: - Trackpad scrolling
@@ -105,7 +138,8 @@ struct GraphCanvasView: View {
     // MARK: - Content
 
     private func canvasContent(snapshot: PlanViewModel.RenderSnapshot, size: CGSize) -> some View {
-        let edges = edgeGeometry(snapshot: snapshot)
+        let criticalIDs = viewModel.showCriticalPath ? viewModel.criticalPathResult().criticalTaskIDs : nil
+        let edges = edgeGeometry(snapshot: snapshot, criticalIDs: criticalIDs)
         let pending = pendingLink()
 
         return ZStack {
@@ -130,7 +164,7 @@ struct GraphCanvasView: View {
 
             let linkTarget = currentLinkTarget()
             ForEach(snapshot.orderedTasks) { task in
-                cardContainer(for: task, snapshot: snapshot, linkTarget: linkTarget)
+                cardContainer(for: task, snapshot: snapshot, linkTarget: linkTarget, criticalIDs: criticalIDs)
             }
 
             // Connector delete hotspots sit on top of the cards so they are always hoverable.
@@ -234,7 +268,8 @@ struct GraphCanvasView: View {
     private func cardContainer(
         for task: PlanTask,
         snapshot: PlanViewModel.RenderSnapshot,
-        linkTarget: (id: UUID, isValid: Bool)?
+        linkTarget: (id: UUID, isValid: Bool)?,
+        criticalIDs: Set<UUID>?
     ) -> some View {
         let state = snapshot.displayState(of: task)
         let isEditing = viewModel.editingTaskID == task.id
@@ -251,7 +286,7 @@ struct GraphCanvasView: View {
             number: snapshot.number(of: task),
             state: state,
             isSelected: viewModel.isSelected(task.id),
-            isDimmed: shouldDim(task, snapshot: snapshot),
+            isDimmed: shouldDim(task, snapshot: snapshot, criticalIDs: criticalIDs),
             isEditing: isEditing,
             linkTarget: highlight,
             editingTitle: $editingTitle,
@@ -547,15 +582,21 @@ struct GraphCanvasView: View {
         return CGSize(width: maxX + margin, height: maxY + margin)
     }
 
-    private func edgeGeometry(snapshot: PlanViewModel.RenderSnapshot) -> [DependencyEdgesView.Edge] {
+    private func edgeGeometry(snapshot: PlanViewModel.RenderSnapshot, criticalIDs: Set<UUID>?) -> [DependencyEdgesView.Edge] {
         guard let plan = viewModel.plan else { return [] }
         return plan.dependencies.compactMap { dependency in
             guard let from = snapshot.taskByID[dependency.prerequisiteTaskID],
                   let to = snapshot.taskByID[dependency.dependentTaskID] else { return nil }
             let fromP = effectivePosition(of: from)
             let toP = effectivePosition(of: to)
-            let highlighted = viewModel.selectedDependencyID == dependency.id
-                || viewModel.isSelected(from.id) || viewModel.isSelected(to.id)
+            // On the critical path, only its edges are highlighted; otherwise selection drives it.
+            let highlighted: Bool
+            if let criticalIDs {
+                highlighted = criticalIDs.contains(from.id) && criticalIDs.contains(to.id)
+            } else {
+                highlighted = viewModel.selectedDependencyID == dependency.id
+                    || viewModel.isSelected(from.id) || viewModel.isSelected(to.id)
+            }
             return DependencyEdgesView.Edge(
                 id: dependency.id,
                 start: CGPoint(x: fromP.x + cardSize.width / 2, y: fromP.y),
@@ -615,7 +656,11 @@ struct GraphCanvasView: View {
         }
     }
 
-    private func shouldDim(_ task: PlanTask, snapshot: PlanViewModel.RenderSnapshot) -> Bool {
+    private func shouldDim(_ task: PlanTask, snapshot: PlanViewModel.RenderSnapshot, criticalIDs: Set<UUID>?) -> Bool {
+        // Critical-path mode dims everything off the path.
+        if let criticalIDs {
+            return !criticalIDs.contains(task.id)
+        }
         let filtering = !viewModel.activeFilters.isEmpty
             || !viewModel.searchText.trimmingCharacters(in: .whitespaces).isEmpty
         guard filtering else { return false }
