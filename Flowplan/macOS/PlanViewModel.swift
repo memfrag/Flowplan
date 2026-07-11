@@ -88,6 +88,9 @@ public final class PlanViewModel {
     /// Highlights the critical path on the graph (dims off-path tasks) when true.
     public var showCriticalPath: Bool = false
 
+    /// Drives the "delete all closed tasks" confirmation dialog.
+    public var confirmingDeleteClosedTasks: Bool = false
+
     /// Focus filters; when non-empty, non-matching tasks are dimmed (spec §11.2).
     public var activeFilters: Set<TaskDisplayState> = []
 
@@ -334,6 +337,24 @@ public final class PlanViewModel {
         guard let store, let task = selectedTask else { return }
         let copy = store.duplicateTask(task)
         selectTask(copy.id)
+    }
+
+    /// The number of Closed tasks in the active plan.
+    public var closedTaskCount: Int {
+        tasks.filter { $0.progress == .closed }.count
+    }
+
+    /// Requests deletion of all Closed tasks — presents the confirmation dialog if there are any.
+    public func requestDeleteClosedTasks() {
+        guard closedTaskCount > 0 else { return }
+        confirmingDeleteClosedTasks = true
+    }
+
+    /// Permanently deletes all Closed tasks in the active plan (after confirmation).
+    public func deleteClosedTasks() {
+        guard let store, let plan else { return }
+        store.deleteClosedTasks(in: plan)
+        clearSelection()
     }
 
     /// Attempts to start a task, surfacing the blocked message if it is not Ready (spec §10.3, §16.3).

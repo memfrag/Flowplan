@@ -215,6 +215,12 @@ final class MCPTaskService {
         return makeTaskSnapshot(planTask, in: plan)
     }
 
+    func deleteClosedTasks(project: String) throws -> String {
+        let plan = try resolvePlan(project)
+        let count = planStore.deleteClosedTasks(in: plan)
+        return "Deleted \(count) closed task\(count == 1 ? "" : "s")."
+    }
+
     func deleteTask(project: String, task: String) throws -> String {
         let plan = try resolvePlan(project)
         let planTask = try resolveTask(in: plan, query: task)

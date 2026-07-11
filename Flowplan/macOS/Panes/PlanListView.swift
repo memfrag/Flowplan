@@ -32,7 +32,9 @@ struct PlanListView: View {
                 if !items.isEmpty {
                     Section {
                         ForEach(items) { task in
-                            row(task).tag(task.id)
+                            row(task)
+                                .tag(task.id)
+                                .contextMenu { rowContextMenu(task) }
                         }
                     } header: {
                         sectionHeader(state, count: items.count)
@@ -50,6 +52,25 @@ struct PlanListView: View {
             Text("\(count)").foregroundStyle(.tertiary).monospacedDigit()
         }
         .font(.subheadline.weight(.semibold))
+    }
+
+    @ViewBuilder
+    private func rowContextMenu(_ task: PlanTask) -> some View {
+        let state = viewModel.displayState(of: task)
+        if state == .closed || state == .done {
+            Button("Reopen") { viewModel.reopen(task) }
+        } else {
+            Button("Close") { viewModel.close(task) }
+        }
+        Button("Duplicate") {
+            viewModel.selectTask(task.id)
+            viewModel.duplicateSelectedTask()
+        }
+        Divider()
+        Button("Delete", role: .destructive) {
+            viewModel.selectTask(task.id)
+            viewModel.deleteSelectedTaskOrDependency()
+        }
     }
 
     private func row(_ task: PlanTask) -> some View {

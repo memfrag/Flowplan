@@ -155,6 +155,10 @@ nonisolated enum FlowplanMCPServerFactory {
             let task = try requireString("task")
             return try await service.deleteTask(project: project, task: task)
 
+        case "delete_closed_tasks":
+            let project = try requireString("project")
+            return try await service.deleteClosedTasks(project: project)
+
         case "add_comment":
             let project = try requireString("project")
             let task = try requireString("task")

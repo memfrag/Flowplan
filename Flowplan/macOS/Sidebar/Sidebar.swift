@@ -44,6 +44,16 @@ struct Sidebar: View {
         } message: { alert in
             Text(alert.message)
         }
+        .confirmationDialog(
+            "Delete \(viewModel.closedTaskCount) closed task\(viewModel.closedTaskCount == 1 ? "" : "s")?",
+            isPresented: $viewModel.confirmingDeleteClosedTasks,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) { viewModel.deleteClosedTasks() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently removes the closed tasks and their dependency connections. This can't be undone.")
+        }
     }
 
     // MARK: - Sidebar list

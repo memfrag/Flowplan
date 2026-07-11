@@ -316,6 +316,14 @@ struct CommandPaletteView: View {
                 id: "action.search", title: "Search Tasks",
                 subtitle: "⌘F", systemImage: "magnifyingglass", keywords: "find filter"
             ) { viewModel.isSearchPresented = true })
+
+            if viewModel.closedTaskCount > 0 {
+                items.append(PaletteItem(
+                    id: "action.deleteClosed", title: "Delete Closed Tasks…",
+                    subtitle: "\(viewModel.closedTaskCount)", systemImage: "trash",
+                    iconColor: .red, keywords: "cleanup purge archive remove closed"
+                ) { viewModel.requestDeleteClosedTasks() })
+            }
         }
 
         items.append(PaletteItem(

@@ -166,6 +166,17 @@ nonisolated enum MCPToolCatalog {
             ])
         ),
         Tool(
+            name: "delete_closed_tasks",
+            description: "Permanently delete every Closed task in a project (and their dependency edges) to keep the plan tidy. Irreversible.",
+            inputSchema: .object([
+                "type": "object",
+                "properties": [
+                    "project": ["type": "string", "description": "Project title or UUID"]
+                ],
+                "required": ["project"]
+            ])
+        ),
+        Tool(
             name: "add_comment",
             description: "Add a comment to a task, e.g. investigation findings or how the task was resolved.",
             inputSchema: .object([

@@ -54,6 +54,8 @@ struct TaskCommands: Commands {
                 .keyboardShortcut("d", modifiers: .command)
             Button("Delete") { viewModel?.deleteSelectedTaskOrDependency() }
                 .keyboardShortcut(.delete, modifiers: [])
+            Button("Delete Closed Tasks…") { viewModel?.requestDeleteClosedTasks() }
+                .disabled((viewModel?.closedTaskCount ?? 0) == 0)
 
             Divider()
 

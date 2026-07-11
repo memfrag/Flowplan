@@ -108,6 +108,27 @@ public final class PlanStore {
         save()
     }
 
+    /// Permanently deletes every Closed task in the plan, along with any dependency edges that
+    /// reference them, in a single save. Returns the number of tasks removed.
+    @discardableResult
+    public func deleteClosedTasks(in plan: Plan) -> Int {
+        let closed = plan.tasks.filter { $0.progress == .closed }
+        guard !closed.isEmpty else { return 0 }
+        let closedIDs = Set(closed.map(\.id))
+        let referencing = plan.dependencies.filter {
+            closedIDs.contains($0.prerequisiteTaskID) || closedIDs.contains($0.dependentTaskID)
+        }
+        for dependency in referencing {
+            modelContext.delete(dependency)
+        }
+        for task in closed {
+            modelContext.delete(task)
+        }
+        plan.touch()
+        save()
+        return closed.count
+    }
+
     /// Duplicates a task (without its dependencies), offset slightly so it is visible (spec §14, Cmd+D).
     @discardableResult
     public func duplicateTask(_ task: PlanTask) -> PlanTask {
