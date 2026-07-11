@@ -63,6 +63,9 @@ struct Sidebar: View {
                 NavigationLink(value: SidebarSelection.mode(.board)) {
                     Label("Board View", systemImage: PlanViewMode.board.systemImage)
                 }
+                NavigationLink(value: SidebarSelection.mode(.timeline)) {
+                    Label("Timeline View", systemImage: PlanViewMode.timeline.systemImage)
+                }
             }
 
             Section("Focus") {
@@ -178,6 +181,7 @@ struct Sidebar: View {
                 case .graph: GraphCanvasView(viewModel: viewModel)
                 case .list: PlanListView(viewModel: viewModel)
                 case .board: PlanBoardView(viewModel: viewModel)
+                case .timeline: PlanTimelineView(viewModel: viewModel)
                 }
             }
         }

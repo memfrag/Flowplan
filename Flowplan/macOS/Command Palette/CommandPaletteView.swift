@@ -272,7 +272,10 @@ struct CommandPaletteView: View {
             ) { viewModel.activeFilters = []; viewModel.viewMode = .list },
             PaletteItem(id: "view.board", title: "Board View",
                         subtitle: "⌘3", systemImage: PlanViewMode.board.systemImage, keywords: "kanban columns"
-            ) { viewModel.activeFilters = []; viewModel.viewMode = .board }
+            ) { viewModel.activeFilters = []; viewModel.viewMode = .board },
+            PaletteItem(id: "view.timeline", title: "Timeline View",
+                        subtitle: "⌘4", systemImage: PlanViewMode.timeline.systemImage, keywords: "due dates calendar schedule"
+            ) { viewModel.activeFilters = []; viewModel.viewMode = .timeline }
         ])
 
         if hasPlan {

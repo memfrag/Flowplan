@@ -67,6 +67,8 @@ struct TaskCommands: Commands {
                 .keyboardShortcut("2", modifiers: .command)
             Button("Board View") { viewModel?.viewMode = .board }
                 .keyboardShortcut("3", modifiers: .command)
+            Button("Timeline View") { viewModel?.viewMode = .timeline }
+                .keyboardShortcut("4", modifiers: .command)
 
             Divider()
 

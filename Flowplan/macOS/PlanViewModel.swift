@@ -10,12 +10,14 @@ public enum PlanViewMode: String, CaseIterable, Sendable {
     case graph
     case list
     case board
+    case timeline
 
     var title: String {
         switch self {
         case .graph: "Graph View"
         case .list: "List View"
         case .board: "Board View"
+        case .timeline: "Timeline View"
         }
     }
 
@@ -24,6 +26,7 @@ public enum PlanViewMode: String, CaseIterable, Sendable {
         case .graph: "point.3.connected.trianglepath.dotted"
         case .list: "list.bullet"
         case .board: "rectangle.split.3x1"
+        case .timeline: "calendar.day.timeline.left"
         }
     }
 }
