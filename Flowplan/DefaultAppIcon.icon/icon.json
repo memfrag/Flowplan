@@ -1,14 +1,21 @@
 {
   "fill" : {
-    "solid" : "gray:1.00000,1.00000"
+    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
   },
   "groups" : [
     {
       "layers" : [
         {
           "glass" : false,
-          "image-name" : "Image 2.png",
-          "name" : "Image 2"
+          "image-name" : "Image.png",
+          "name" : "Image",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -44.375,
+              -11.3671875
+            ]
+          }
         }
       ],
       "shadow" : {
