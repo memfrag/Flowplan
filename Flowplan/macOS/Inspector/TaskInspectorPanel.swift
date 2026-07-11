@@ -92,6 +92,15 @@ struct TaskInspectorPanel: View {
                     dueDateControl(task)
                 }
 
+                if task.dueDate != nil {
+                    GridRow {
+                        InspectorLabel("Calendar")
+                        CalendarButton(task: task) { message in
+                            viewModel.activeAlert = PlanAlert(title: "Calendar", message: message)
+                        }
+                    }
+                }
+
                 GridRow {
                     InspectorLabel("Tags")
                     InspectorTextValue(task.tags.isEmpty ? "—" : task.tags.joined(separator: ", "))
@@ -355,6 +364,8 @@ struct TaskInspectorPanel: View {
                 }
                 Spacer()
                 Button {
+                    // Clearing the due date also removes any calendar event mirroring it.
+                    try? CalendarService.shared.removeEvent(for: task)
                     viewModel.store?.updateTask(task, dueDate: .some(nil))
                 } label: {
                     Image(systemName: "xmark.circle.fill")
@@ -379,6 +390,52 @@ struct TaskInspectorPanel: View {
             get: { task.dueDate ?? Calendar.current.startOfDay(for: .now) },
             set: { viewModel.store?.updateTask(task, dueDate: .some($0)) }
         )
+    }
+
+    /// Adds/removes a Calendar event mirroring the task's due date (see ``CalendarService``).
+    private struct CalendarButton: View {
+        let task: PlanTask
+        let onError: (String) -> Void
+
+        @State private var inCalendar = false
+        @State private var working = false
+
+        var body: some View {
+            HStack {
+                Button {
+                    Task { await toggle() }
+                } label: {
+                    Label(inCalendar ? "Remove from Calendar" : "Add to Calendar",
+                          systemImage: inCalendar ? "calendar.badge.minus" : "calendar.badge.plus")
+                }
+                .buttonStyle(.link)
+                .disabled(working)
+                Spacer()
+            }
+            .padding(.trailing, 8)
+            .task(id: task.id) { inCalendar = CalendarService.shared.hasEvent(for: task) }
+        }
+
+        private func toggle() async {
+            working = true
+            defer { working = false }
+            let service = CalendarService.shared
+            do {
+                if inCalendar {
+                    try service.removeEvent(for: task)
+                    inCalendar = false
+                } else {
+                    guard await service.requestAccess() else {
+                        onError(CalendarService.CalendarError.accessDenied.errorDescription ?? "Calendar access was denied.")
+                        return
+                    }
+                    try service.addOrUpdateEvent(for: task)
+                    inCalendar = service.hasEvent(for: task)
+                }
+            } catch {
+                onError(error.localizedDescription)
+            }
+        }
     }
 
     // MARK: - Pickers
