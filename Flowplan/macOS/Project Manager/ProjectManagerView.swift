@@ -173,8 +173,13 @@ struct ProjectManagerView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "chevron.left.forwardslash.chevron.right")
                             .foregroundStyle(.secondary)
-                        TextField("https://github.com/owner/repo", text: repoBinding(plan, index))
-                            .textFieldStyle(.roundedBorder)
+                        TextField(
+                            "Repository URL",
+                            text: repoBinding(plan, index),
+                            prompt: Text("https://github.com/owner/repo")
+                        )
+                        .labelsHidden()
+                        .textFieldStyle(.roundedBorder)
                         if let url = validURL(plan.repositoryURLs[index]) {
                             Link(destination: url) {
                                 Image(systemName: "arrow.up.right.square")
