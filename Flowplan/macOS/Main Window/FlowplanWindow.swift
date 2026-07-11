@@ -26,7 +26,6 @@ struct FlowplanWindow: View {
 
     private func setUp() {
         viewModel.configure(store: store)
-        store.seedIfEmpty()
         store.backfillTaskNumbers()
         ensureActivePlan(in: plans)
     }
