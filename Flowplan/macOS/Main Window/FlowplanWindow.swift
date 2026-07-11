@@ -16,6 +16,7 @@ struct FlowplanWindow: View {
 
     var body: some View {
         Sidebar(viewModel: viewModel)
+            .overlay { CommandPaletteOverlay(viewModel: viewModel) }
             .focusedSceneValue(\.planViewModel, viewModel)
             .task { setUp() }
             .onChange(of: plans) { _, newPlans in

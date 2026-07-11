@@ -72,6 +72,8 @@ struct TaskCommands: Commands {
 
             Button("Search") { viewModel?.isSearchPresented = true }
                 .keyboardShortcut("f", modifiers: .command)
+            Button("Command Palette…") { viewModel?.isCommandPalettePresented = true }
+                .keyboardShortcut("k", modifiers: .command)
 
             Divider()
 
@@ -84,8 +86,16 @@ struct TaskCommands: Commands {
 
             Divider()
 
-            Button("Clear Selection") { viewModel?.clearSelection() }
-                .keyboardShortcut(.escape, modifiers: [])
+            Button("Clear Selection") {
+                // Escape is a menu key equivalent, so it can fire while the command palette is
+                // open — dismiss the palette first instead of silently clearing the selection.
+                if viewModel?.isCommandPalettePresented == true {
+                    viewModel?.isCommandPalettePresented = false
+                } else {
+                    viewModel?.clearSelection()
+                }
+            }
+            .keyboardShortcut(.escape, modifiers: [])
         }
     }
 

@@ -76,6 +76,9 @@ public final class PlanViewModel {
     /// Presents (and focuses) the toolbar search field — bound to `.searchable`, set by ⌘F.
     public var isSearchPresented: Bool = false
 
+    /// Presents the command palette overlay (⌘K).
+    public var isCommandPalettePresented: Bool = false
+
     /// Focus filters; when non-empty, non-matching tasks are dimmed (spec §11.2).
     public var activeFilters: Set<TaskDisplayState> = []
 
