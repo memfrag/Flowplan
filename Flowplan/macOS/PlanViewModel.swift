@@ -51,7 +51,24 @@ public final class PlanViewModel {
     public weak var store: PlanStore?
 
     /// The plan currently being viewed/edited.
-    public var plan: Plan?
+    public var plan: Plan? {
+        didSet {
+            guard plan?.id != oldValue?.id else { return }
+            // Each plan remembers its own canvas pan/zoom, so switching projects doesn't inherit the
+            // previous project's viewport (which is disorienting). Save the outgoing plan's position
+            // and restore the incoming plan's, defaulting to origin/100% for a plan not seen yet.
+            if let oldID = oldValue?.id {
+                savedViewports[oldID] = (canvasOffset, zoomScale)
+            }
+            if let newID = plan?.id, let saved = savedViewports[newID] {
+                canvasOffset = saved.offset
+                zoomScale = saved.zoom
+            } else {
+                canvasOffset = .zero
+                zoomScale = 1.0
+            }
+        }
+    }
 
     // MARK: - UI state
 
@@ -96,6 +113,11 @@ public final class PlanViewModel {
 
     public var zoomScale: CGFloat = 1.0
     public var canvasOffset: CGSize = .zero
+
+    /// Per-plan saved canvas viewport (pan offset + zoom), so switching projects restores each
+    /// project's own position instead of carrying over the previous one. In-memory for the session.
+    @ObservationIgnored
+    private var savedViewports: [UUID: (offset: CGSize, zoom: CGFloat)] = [:]
 
     /// The content-space point at the centre of the current graph viewport, updated by the canvas.
     /// New tasks created via the menu are placed here.
