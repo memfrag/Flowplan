@@ -68,6 +68,7 @@ struct MCPSettingsTab: View {
     }
 }
 
+#if DEBUG
 #Preview {
     let settings = AppSettings.mock()
     let planStore = PlanStore(modelContext: AppEnvironment.makeModelContainer(inMemory: true).mainContext)
@@ -75,3 +76,4 @@ struct MCPSettingsTab: View {
         .environment(settings)
         .environment(MCPServerManager(appSettings: settings, service: MCPTaskService(planStore: planStore)))
 }
+#endif
