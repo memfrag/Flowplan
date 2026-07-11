@@ -38,11 +38,17 @@ struct TaskCardView: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 if isEditing {
-                    TextField("Task title", text: $editingTitle, onCommit: onCommitEdit)
+                    TextField("Task title", text: $editingTitle)
                         .textFieldStyle(.plain)
                         .font(.callout.weight(.semibold))
                         .focused($titleFieldFocused)
                         .onAppear { titleFieldFocused = true }
+                        .onSubmit(onCommitEdit)
+                        // Commit on focus loss too — clicking away without pressing Return must not
+                        // discard the name the user just typed.
+                        .onChange(of: titleFieldFocused) { _, focused in
+                            if !focused { onCommitEdit() }
+                        }
                 } else {
                     Text(task.title)
                         .font(.callout.weight(.semibold))

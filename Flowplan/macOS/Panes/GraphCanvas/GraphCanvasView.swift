@@ -77,7 +77,13 @@ struct GraphCanvasView: View {
             .onChange(of: geo.size) { viewModel.lastViewportCenter = viewportCenter(in: geo.size) }
             .onChange(of: viewModel.canvasOffset) { viewModel.lastViewportCenter = viewportCenter(in: geo.size) }
             .onChange(of: viewModel.zoomScale) { viewModel.lastViewportCenter = viewportCenter(in: geo.size) }
-            .onChange(of: viewModel.editingTaskID) { _, newValue in
+            .onChange(of: viewModel.editingTaskID) { oldValue, newValue in
+                // Commit the draft of the task we're leaving, so ending an edit *any* way — clicking
+                // the canvas (which calls clearSelection), selecting another task, creating a new
+                // one — persists the typed name instead of discarding it.
+                if let oldID = oldValue, oldID != newValue, let task = viewModel.task(id: oldID) {
+                    writeEditingTitle(to: task)
+                }
                 if let id = newValue, let task = viewModel.task(id: id) {
                     editingTitle = task.title
                 }
@@ -550,13 +556,18 @@ struct GraphCanvasView: View {
     }
 
     private func commitEdit(_ task: PlanTask) {
-        let trimmed = editingTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty {
-            task.title = trimmed
-            task.touch()
-            viewModel.store?.save()
-        }
+        writeEditingTitle(to: task)
         viewModel.editingTaskID = nil
+    }
+
+    /// Persists the in-progress title draft to the task, ignoring empty/whitespace input. Safe to
+    /// call more than once (idempotent) — the various commit paths may overlap.
+    private func writeEditingTitle(to task: PlanTask) {
+        let trimmed = editingTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, task.title != trimmed else { return }
+        task.title = trimmed
+        task.touch()
+        viewModel.store?.save()
     }
 
     // MARK: - Geometry helpers

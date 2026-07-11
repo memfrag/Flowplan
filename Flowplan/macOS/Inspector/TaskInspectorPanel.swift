@@ -103,7 +103,7 @@ struct TaskInspectorPanel: View {
 
                 GridRow {
                     InspectorLabel("Tags")
-                    InspectorTextValue(task.tags.isEmpty ? "—" : task.tags.joined(separator: ", "))
+                    InspectorTextField(tagsBinding(task))
                 }
 
                 InspectorDivider()
@@ -492,6 +492,23 @@ struct TaskInspectorPanel: View {
         Binding(
             get: { task.notes },
             set: { task.notes = $0; task.touch(); viewModel.store?.save() }
+        )
+    }
+
+    /// Edits tags as a comma-separated string; parses into trimmed, de-duplicated, non-empty tags.
+    private func tagsBinding(_ task: PlanTask) -> Binding<String> {
+        Binding(
+            get: { task.tags.joined(separator: ", ") },
+            set: { newValue in
+                var seen = Set<String>()
+                let tags = newValue
+                    .split(separator: ",")
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty && seen.insert($0).inserted }
+                task.tags = tags
+                task.touch()
+                viewModel.store?.save()
+            }
         )
     }
 

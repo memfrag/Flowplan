@@ -272,12 +272,33 @@ struct Sidebar: View {
     private var zoomControls: some View {
         if viewModel.viewMode == .graph && !viewModel.showOverview {
             Button { setZoom(viewModel.zoomScale - 0.1) } label: { Image(systemName: "minus.magnifyingglass") }
-            Text("\(Int(viewModel.zoomScale * 100))%")
-                .font(.callout.monospacedDigit())
-                .frame(width: 42)
+            Menu {
+                ForEach(Self.zoomPresets, id: \.self) { level in
+                    Button {
+                        setZoom(level)
+                    } label: {
+                        if abs(viewModel.zoomScale - level) < 0.001 {
+                            Label("\(Int(level * 100))%", systemImage: "checkmark")
+                        } else {
+                            Text("\(Int(level * 100))%")
+                        }
+                    }
+                }
+            } label: {
+                Text("\(Int(viewModel.zoomScale * 100))%")
+                    .font(.callout.monospacedDigit())
+                    .frame(width: 42)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Select a zoom level")
             Button { setZoom(viewModel.zoomScale + 0.1) } label: { Image(systemName: "plus.magnifyingglass") }
         }
     }
+
+    /// Preset zoom levels offered by the zoom-percentage menu.
+    private static let zoomPresets: [CGFloat] = [0.5, 0.75, 0.8, 0.9, 1.0]
 
     private func setZoom(_ value: CGFloat) {
         viewModel.zoomScale = min(max(value, GraphMetrics.minZoom), GraphMetrics.maxZoom)
