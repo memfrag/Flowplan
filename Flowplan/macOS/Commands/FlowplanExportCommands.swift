@@ -22,6 +22,8 @@ struct FlowplanExportCommands: Commands {
                 Button("Export as Markdown…") { export(.markdown) }
                 Button("Export Graph as PNG…") { export(.png) }
                 Button("Export Graph as PDF…") { export(.pdf) }
+                Button("Export Graph as Mermaid…") { export(.mermaid) }
+                Button("Export Graph as Graphviz…") { export(.graphviz) }
             }
             .disabled(viewModel?.plan == nil)
             .fileExporter(
@@ -37,7 +39,7 @@ struct FlowplanExportCommands: Commands {
         }
     }
 
-    private enum ExportKind { case flowplan, markdown, png, pdf }
+    private enum ExportKind { case flowplan, markdown, png, pdf, mermaid, graphviz }
 
     private func export(_ kind: ExportKind) {
         guard let plan = viewModel?.plan else { return }
@@ -63,6 +65,16 @@ struct FlowplanExportCommands: Commands {
             guard let data = renderPDF(for: plan) else { return }
             document = ExportDocument(data: data)
             contentType = .pdf
+            filename = base
+        case .mermaid:
+            let text = PlanDTO(plan: plan).mermaidGraph()
+            document = ExportDocument(data: Data(text.utf8))
+            contentType = .mermaid
+            filename = base
+        case .graphviz:
+            let text = PlanDTO(plan: plan).dotGraph()
+            document = ExportDocument(data: Data(text.utf8))
+            contentType = .graphviz
             filename = base
         }
         isExporting = true

@@ -27,6 +27,40 @@
                 </array>
             </dict>
         </dict>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>io.apparata.flowplan.mermaid</string>
+            <key>UTTypeDescription</key>
+            <string>Mermaid Diagram</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.plain-text</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>mmd</string>
+                </array>
+            </dict>
+        </dict>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>io.apparata.flowplan.graphviz</string>
+            <key>UTTypeDescription</key>
+            <string>Graphviz DOT</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.plain-text</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>gv</string>
+                </array>
+            </dict>
+        </dict>
     </array>
 </dict>
 </plist>
