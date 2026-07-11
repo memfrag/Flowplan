@@ -9,9 +9,12 @@ import SwiftData
 @Model
 public final class Plan {
 
-    @Attribute(.unique) public var id: UUID
+    // CloudKit forbids unique constraints, and every stored property must be optional or have a
+    // default value — so `id` is a plain UUID (kept unique in practice by generation) with defaults
+    // throughout.
+    public var id: UUID = UUID()
 
-    public var title: String
+    public var title: String = ""
 
     /// An SF Symbol name used as the project's icon.
     public var icon: String = "folder"
@@ -26,14 +29,27 @@ public final class Plan {
     /// numbers are never reused even after tasks are deleted (see ``PlanTask/number``).
     public var nextTaskNumber: Int = 1
 
-    public var createdAt: Date
-    public var updatedAt: Date
+    public var createdAt: Date = Date.now
+    public var updatedAt: Date = Date.now
 
+    // CloudKit requires to-many relationships to be optional. We store them optionally but expose
+    // non-optional array accessors so the rest of the app is unaffected (a to-many relationship is a
+    // set under the hood, so assigning through the setter dedupes by identity).
     @Relationship(deleteRule: .cascade, inverse: \PlanTask.plan)
-    public var tasks: [PlanTask]
+    var tasksStorage: [PlanTask]?
+
+    public var tasks: [PlanTask] {
+        get { tasksStorage ?? [] }
+        set { tasksStorage = newValue }
+    }
 
     @Relationship(deleteRule: .cascade, inverse: \TaskDependency.plan)
-    public var dependencies: [TaskDependency]
+    var dependenciesStorage: [TaskDependency]?
+
+    public var dependencies: [TaskDependency] {
+        get { dependenciesStorage ?? [] }
+        set { dependenciesStorage = newValue }
+    }
 
     public init(
         id: UUID = UUID(),
@@ -55,8 +71,8 @@ public final class Plan {
         self.nextTaskNumber = nextTaskNumber
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-        self.tasks = tasks
-        self.dependencies = dependencies
+        self.tasksStorage = tasks
+        self.dependenciesStorage = dependencies
     }
 }
 

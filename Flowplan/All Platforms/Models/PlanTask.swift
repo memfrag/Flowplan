@@ -13,25 +13,26 @@ import SwiftData
 @Model
 public final class PlanTask {
 
-    @Attribute(.unique) public var id: UUID
+    // CloudKit-compatible: no unique constraint, every property optional or defaulted (see ``Plan``).
+    public var id: UUID = UUID()
 
     /// A stable, per-plan display number (see ``Plan/nextTaskNumber``). Assigned once when the task
     /// is created and never reused or changed — unlike ``id`` it is human-friendly (1, 2, 3, …) and
     /// scoped to the owning plan. `0` means "not yet assigned" (backfilled on load).
     public var number: Int = 0
 
-    public var title: String
+    public var title: String = ""
 
     /// A description of what the task entails (distinct from freeform ``notes``).
     public var details: String = ""
 
-    public var notes: String
+    public var notes: String = ""
 
     /// Backing storage for ``progress``. Stored as a raw string for SwiftData compatibility.
-    public var progressRaw: String
+    public var progressRaw: String = TaskProgress.notStarted.rawValue
 
     public var category: String?
-    public var tags: [String]
+    public var tags: [String] = []
 
     /// Backing storage for ``priority``.
     public var priorityRaw: String?
@@ -44,15 +45,21 @@ public final class PlanTask {
     public var positionX: Double?
     public var positionY: Double?
 
-    public var createdAt: Date
-    public var updatedAt: Date
+    public var createdAt: Date = Date.now
+    public var updatedAt: Date = Date.now
 
     /// The plan this task belongs to. Inverse of ``Plan/tasks``.
     public var plan: Plan?
 
-    /// Comments on this task, e.g. investigation findings or resolution notes.
+    /// Comments on this task, e.g. investigation findings or resolution notes. Stored optionally
+    /// (CloudKit requires it) but exposed as a non-optional array (see ``Plan/tasks``).
     @Relationship(deleteRule: .cascade, inverse: \TaskComment.task)
-    public var comments: [TaskComment] = []
+    var commentsStorage: [TaskComment]?
+
+    public var comments: [TaskComment] {
+        get { commentsStorage ?? [] }
+        set { commentsStorage = newValue }
+    }
 
     public init(
         id: UUID = UUID(),
@@ -84,6 +91,7 @@ public final class PlanTask {
         self.positionY = position.map { Double($0.y) }
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.commentsStorage = nil
     }
 }
 

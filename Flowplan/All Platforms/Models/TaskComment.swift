@@ -10,14 +10,15 @@ import SwiftData
 @Model
 public final class TaskComment {
 
-    @Attribute(.unique) public var id: UUID
+    // CloudKit-compatible: no unique constraint, every property optional or defaulted (see ``Plan``).
+    public var id: UUID = UUID()
 
     /// Who wrote the comment — `"user"` for comments added in the app, or an agent name.
-    public var author: String
+    public var author: String = ""
 
-    public var text: String
+    public var text: String = ""
 
-    public var createdAt: Date
+    public var createdAt: Date = Date.now
 
     /// The task this comment belongs to. Inverse of ``PlanTask/comments``.
     public var task: PlanTask?

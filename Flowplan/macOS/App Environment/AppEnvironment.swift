@@ -5,6 +5,7 @@
 import Foundation
 import SwiftUI
 import SwiftData
+import OSLog
 
 /// An application-wide environment container.
 ///
@@ -63,11 +64,45 @@ public final class AppEnvironment {
 extension AppEnvironment {
 
     /// Builds the SwiftData container for Flowplan's models.
+    ///
+    /// The on-disk store syncs via CloudKit (`.automatic` reads the iCloud container from the app's
+    /// entitlement and mirrors to the user's private database). If CloudKit is unavailable — no
+    /// entitlement, unsigned/ad-hoc build, etc. — it falls back to a local-only store so the app
+    /// still runs. In-memory stores (previews/tests) never use CloudKit.
     static func makeModelContainer(inMemory: Bool = false) -> ModelContainer {
         let schema = Schema([Plan.self, PlanTask.self, TaskDependency.self, TaskComment.self])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
+
+        if inMemory {
+            let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+            return (try? ModelContainer(for: schema, configurations: [configuration]))
+                ?? fatalContainer(schema: schema)
+        }
+
+        let cloudConfiguration = ModelConfiguration(schema: schema, cloudKitDatabase: .automatic)
         do {
-            return try ModelContainer(for: schema, configurations: [configuration])
+            let container = try ModelContainer(for: schema, configurations: [cloudConfiguration])
+            Self.log.info("Model container created with CloudKit sync enabled.")
+            return container
+        } catch {
+            // The specific reason (e.g. a CloudKit schema-compatibility violation) is logged by the
+            // `com.apple.coredata` subsystem, not carried on this wrapped SwiftDataError.
+            Self.log.error("CloudKit unavailable — using a local store. \(error, privacy: .public)")
+        }
+
+        // CloudKit unavailable — fall back to a local store.
+        let localConfiguration = ModelConfiguration(schema: schema, cloudKitDatabase: .none)
+        return (try? ModelContainer(for: schema, configurations: [localConfiguration]))
+            ?? fatalContainer(schema: schema)
+    }
+
+    private static let log = Logger(subsystem: "io.apparata.Flowplan", category: "ModelContainer")
+
+    private static func fatalContainer(schema: Schema) -> ModelContainer {
+        do {
+            return try ModelContainer(
+                for: schema,
+                configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)]
+            )
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }

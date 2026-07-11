@@ -15,13 +15,14 @@ import SwiftData
 @Model
 public final class TaskDependency {
 
-    @Attribute(.unique) public var id: UUID
+    // CloudKit-compatible: no unique constraint, every property optional or defaulted (see ``Plan``).
+    public var id: UUID = UUID()
 
     /// The task that must be completed first.
-    public var prerequisiteTaskID: UUID
+    public var prerequisiteTaskID: UUID = UUID()
 
     /// The task that depends on the prerequisite.
-    public var dependentTaskID: UUID
+    public var dependentTaskID: UUID = UUID()
 
     /// The plan this dependency belongs to. Inverse of ``Plan/dependencies``.
     public var plan: Plan?
