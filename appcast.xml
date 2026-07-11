@@ -1,0 +1,15 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Flowplan</title>
+        <item>
+            <title>1.0.0</title>
+            <pubDate>Sat, 11 Jul 2026 18:16:23 +0200</pubDate>
+            <sparkle:version>1.0.0</sparkle:version>
+            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/memfrag/Flowplan/releases/download/1.0.0/Flowplan-1.0.0.dmg" length="8413267" type="application/octet-stream" sparkle:edSignature="30w6Lq8o7bBYTS95WKlkp8dSYqYD72LdvqZDBSL8IeI1qMSDwVJDQyY5bnqwqSFVPONYlxenELYQ+Bc7OTgCAw=="/>
+        </item>
+    </channel>
+</rss>
