@@ -9,7 +9,7 @@ import SwiftData
 struct ProjectManagerView: View {
 
     @Environment(PlanStore.self) private var store
-    @Query(sort: \Plan.createdAt) private var plans: [Plan]
+    @Query(sort: [SortDescriptor(\Plan.sortOrder), SortDescriptor(\Plan.createdAt)]) private var plans: [Plan]
 
     @State private var selectedPlanID: UUID?
     @State private var renamingPlan: Plan?
@@ -73,6 +73,11 @@ struct ProjectManagerView: View {
                             Label("Delete Project", systemImage: "trash")
                         }
                     }
+                }
+                .onMove { source, destination in
+                    var reordered = plans
+                    reordered.move(fromOffsets: source, toOffset: destination)
+                    store.reorderPlans(reordered)
                 }
             }
             .frame(minWidth: 200)

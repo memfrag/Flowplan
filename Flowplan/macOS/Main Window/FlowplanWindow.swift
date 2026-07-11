@@ -10,7 +10,7 @@ import SwiftData
 struct FlowplanWindow: View {
 
     @Environment(PlanStore.self) private var store
-    @Query(sort: \Plan.createdAt) private var plans: [Plan]
+    @Query(sort: [SortDescriptor(\Plan.sortOrder), SortDescriptor(\Plan.createdAt)]) private var plans: [Plan]
 
     @State private var viewModel = PlanViewModel()
 
@@ -27,6 +27,7 @@ struct FlowplanWindow: View {
     private func setUp() {
         viewModel.configure(store: store)
         store.backfillTaskNumbers()
+        store.backfillPlanOrder()
         ensureActivePlan(in: plans)
         // Drop calendar mappings for tasks that no longer exist.
         CalendarService.shared.pruneOrphans(livingTaskIDs: Set(plans.flatMap(\.tasks).map(\.id)))

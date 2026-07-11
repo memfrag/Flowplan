@@ -25,7 +25,9 @@ public final class PlanStore {
     // MARK: - Plans
 
     public func allPlans() -> [Plan] {
-        let descriptor = FetchDescriptor<Plan>(sortBy: [SortDescriptor(\.createdAt)])
+        let descriptor = FetchDescriptor<Plan>(
+            sortBy: [SortDescriptor(\.sortOrder), SortDescriptor(\.createdAt)]
+        )
         return (try? modelContext.fetch(descriptor)) ?? []
     }
 
@@ -61,9 +63,39 @@ public final class PlanStore {
     @discardableResult
     public func createPlan(title: String = "Untitled Plan") -> Plan {
         let plan = Plan(title: title)
+        plan.sortOrder = nextPlanSortOrder()
         modelContext.insert(plan)
         save()
         return plan
+    }
+
+    /// The sort index for a new project: one past the current maximum, so it lands at the end.
+    private func nextPlanSortOrder() -> Int {
+        (allPlans().map(\.sortOrder).max() ?? -1) + 1
+    }
+
+    /// Persists a new project ordering by assigning sequential sort indices in the given order.
+    /// Used by the Project Manager's drag-to-reorder.
+    public func reorderPlans(_ orderedPlans: [Plan]) {
+        for (index, plan) in orderedPlans.enumerated() where plan.sortOrder != index {
+            plan.sortOrder = index
+            plan.touch()
+        }
+        save()
+    }
+
+    /// Assigns sequential sort orders to projects that predate the ordering feature (all at 0),
+    /// using creation order so the initial ordering matches what users saw before. Idempotent.
+    public func backfillPlanOrder() {
+        let ordered = allPlans().sorted { $0.createdAt < $1.createdAt }
+        // Only backfill when the stored order is degenerate (everything still at the default 0);
+        // otherwise a user-defined order is already in place and must be preserved.
+        let distinctOrders = Set(ordered.map(\.sortOrder))
+        guard ordered.count > 1, distinctOrders.count <= 1 else { return }
+        for (index, plan) in ordered.enumerated() where plan.sortOrder != index {
+            plan.sortOrder = index
+        }
+        save()
     }
 
     public func deletePlan(_ plan: Plan) {
@@ -248,6 +280,9 @@ public final class PlanStore {
     @discardableResult
     public func importPlan(_ dto: PlanDTO) -> Plan {
         let plan = dto.makePlan()
+        // Order is a cross-plan concept, so an imported plan goes to the end rather than trusting
+        // an index that would collide with existing projects.
+        plan.sortOrder = nextPlanSortOrder()
         modelContext.insert(plan)
         save()
         return plan

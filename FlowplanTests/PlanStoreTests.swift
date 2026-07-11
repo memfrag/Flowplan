@@ -119,6 +119,41 @@ struct PlanStoreTests {
         }
     }
 
+    @Test func createPlanAssignsIncreasingSortOrderAndReorderPersists() {
+        withStore { store in
+            let a = store.createPlan(title: "A")
+            let b = store.createPlan(title: "B")
+            let c = store.createPlan(title: "C")
+            #expect(a.sortOrder == 0 && b.sortOrder == 1 && c.sortOrder == 2)
+            #expect(store.allPlans().map(\.title) == ["A", "B", "C"])
+
+            // Move C to the front.
+            store.reorderPlans([c, a, b])
+            #expect(c.sortOrder == 0 && a.sortOrder == 1 && b.sortOrder == 2)
+            #expect(store.allPlans().map(\.title) == ["C", "A", "B"])
+        }
+    }
+
+    @Test func backfillPlanOrderNumbersLegacyPlansByCreation() {
+        withStore { store in
+            // Simulate legacy plans that predate the ordering feature: all at the default 0.
+            let a = store.createPlan(title: "A")
+            let b = store.createPlan(title: "B")
+            let c = store.createPlan(title: "C")
+            for plan in [a, b, c] { plan.sortOrder = 0 }
+            store.save()
+
+            store.backfillPlanOrder()
+            #expect(store.allPlans().map(\.title) == ["A", "B", "C"]) // creation order preserved
+            #expect(Set([a, b, c].map(\.sortOrder)) == Set([0, 1, 2]))
+
+            // Idempotent + non-destructive: a real order is left alone.
+            store.reorderPlans([c, b, a])
+            store.backfillPlanOrder()
+            #expect(store.allPlans().map(\.title) == ["C", "B", "A"])
+        }
+    }
+
     @Test func backfillTaskNumbersIsIdempotent() {
         withStore { store in
             let plan = store.createPlan(title: "P")

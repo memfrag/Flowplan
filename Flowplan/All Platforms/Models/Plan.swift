@@ -25,6 +25,10 @@ public final class Plan {
     /// Associated GitHub (or other) repository URLs.
     public var repositoryURLs: [String] = []
 
+    /// Manual display order for the project list and sidebar picker; lower comes first. Backfilled
+    /// by creation order for projects that predate the feature, and new projects go to the end.
+    public var sortOrder: Int = 0
+
     /// The next per-plan task number to hand out. Starts at 1 and only ever increases, so task
     /// numbers are never reused even after tasks are deleted (see ``PlanTask/number``).
     public var nextTaskNumber: Int = 1
@@ -57,6 +61,7 @@ public final class Plan {
         icon: String = "folder",
         summary: String = "",
         repositoryURLs: [String] = [],
+        sortOrder: Int = 0,
         nextTaskNumber: Int = 1,
         createdAt: Date = .now,
         updatedAt: Date = .now,
@@ -68,6 +73,7 @@ public final class Plan {
         self.icon = icon
         self.summary = summary
         self.repositoryURLs = repositoryURLs
+        self.sortOrder = sortOrder
         self.nextTaskNumber = nextTaskNumber
         self.createdAt = createdAt
         self.updatedAt = updatedAt

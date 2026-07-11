@@ -12,7 +12,7 @@ struct Sidebar: View {
     @Environment(PlanStore.self) private var store
     @Environment(MCPServerManager.self) private var mcpServerManager
     @Environment(\.openWindow) private var openWindow
-    @Query(sort: \Plan.createdAt) private var plans: [Plan]
+    @Query(sort: [SortDescriptor(\Plan.sortOrder), SortDescriptor(\Plan.createdAt)]) private var plans: [Plan]
 
     @State private var selection: SidebarSelection? = .mode(.graph)
     @State private var isInspectorPresented: Bool = true
