@@ -8,9 +8,10 @@ import OSLog
 
 /// Bridges task due dates to the system Calendar via EventKit.
 ///
-/// The task → event mapping is kept in `UserDefaults`, deliberately **not** in the synced SwiftData
-/// model: an `EKEvent` identifier is local to a device's calendar database and meaningless on another
-/// device, so syncing it would be wrong. Each device manages its own calendar mirror of a task.
+/// The task → event mapping lives in a JSON file in Application Support, deliberately **not** in the
+/// synced SwiftData model: an `EKEvent` identifier is local to a device's calendar database and
+/// meaningless on another device, so syncing it would be wrong. Each device manages its own calendar
+/// mirror of a task. (It's app data, not a preference, so it also doesn't belong in `UserDefaults`.)
 @MainActor
 final class CalendarService {
 
@@ -18,6 +19,23 @@ final class CalendarService {
 
     private let store = EKEventStore()
     private let log = Logger(subsystem: "io.apparata.Flowplan", category: "Calendar")
+
+    /// In-memory cache of task UUID string → event identifier, persisted to disk on change.
+    private var eventIDsByTask: [String: String]
+    private let mappingURL: URL
+
+    private init() {
+        let directory = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        mappingURL = directory.appending(path: "CalendarEvents.json")
+        if let data = try? Data(contentsOf: mappingURL),
+           let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
+            eventIDsByTask = decoded
+        } else {
+            eventIDsByTask = [:]
+        }
+    }
 
     enum CalendarError: LocalizedError {
         case accessDenied
@@ -85,19 +103,35 @@ final class CalendarService {
         try store.remove(event, span: .thisEvent, commit: true)
     }
 
-    // MARK: - Per-device task → event mapping
+    /// Removes mapping entries for tasks that no longer exist, keeping the file from accumulating
+    /// orphans as tasks are deleted. Safe to call opportunistically.
+    func pruneOrphans(livingTaskIDs: Set<UUID>) {
+        let living = Set(livingTaskIDs.map(\.uuidString))
+        let before = eventIDsByTask.count
+        eventIDsByTask = eventIDsByTask.filter { living.contains($0.key) }
+        if eventIDsByTask.count != before { persist() }
+    }
 
-    private func key(_ taskID: UUID) -> String { "calendarEvent.\(taskID.uuidString)" }
+    // MARK: - Per-device task → event mapping (JSON in Application Support)
 
     private func eventID(for taskID: UUID) -> String? {
-        UserDefaults.standard.string(forKey: key(taskID))
+        eventIDsByTask[taskID.uuidString]
     }
 
     private func setEventID(_ id: String?, for taskID: UUID) {
         if let id {
-            UserDefaults.standard.set(id, forKey: key(taskID))
+            eventIDsByTask[taskID.uuidString] = id
         } else {
-            UserDefaults.standard.removeObject(forKey: key(taskID))
+            eventIDsByTask.removeValue(forKey: taskID.uuidString)
+        }
+        persist()
+    }
+
+    private func persist() {
+        do {
+            try JSONEncoder().encode(eventIDsByTask).write(to: mappingURL, options: .atomic)
+        } catch {
+            log.error("Failed to persist calendar mapping: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

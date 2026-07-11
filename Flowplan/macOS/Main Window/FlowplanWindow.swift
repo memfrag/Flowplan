@@ -28,6 +28,8 @@ struct FlowplanWindow: View {
         viewModel.configure(store: store)
         store.backfillTaskNumbers()
         ensureActivePlan(in: plans)
+        // Drop calendar mappings for tasks that no longer exist.
+        CalendarService.shared.pruneOrphans(livingTaskIDs: Set(plans.flatMap(\.tasks).map(\.id)))
     }
 
     private func ensureActivePlan(in plans: [Plan]) {
