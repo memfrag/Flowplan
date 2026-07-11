@@ -106,6 +106,7 @@ xcodebuild archive \
     -archivePath "$ARCHIVE_PATH" \
     -configuration Release \
     -arch arm64 \
+    -allowProvisioningUpdates \
     ENABLE_HARDENED_RUNTIME=YES \
     2>&1 | tee "$BUILD_DIR/archive.log" | tail -5
 
@@ -122,6 +123,7 @@ xcodebuild -exportArchive \
     -archivePath "$ARCHIVE_PATH" \
     -exportPath "$EXPORT_DIR" \
     -exportOptionsPlist "$EXPORT_OPTIONS" \
+    -allowProvisioningUpdates \
     2>&1 | tee "$BUILD_DIR/export.log" | tail -5
 
 APP_PATH="$EXPORT_DIR/$APP_NAME.app"
