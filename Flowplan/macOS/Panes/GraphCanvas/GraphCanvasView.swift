@@ -66,13 +66,6 @@ struct GraphCanvasView: View {
             .gesture(zoomGesture)
             .onTapGesture { viewModel.clearSelection() }
             .contextMenu { canvasContextMenu }
-            .overlay {
-                if snapshot.orderedTasks.isEmpty {
-                    EmptyGraphState(viewModel: viewModel, viewportCenter: viewportCenter(in: geo.size))
-                } else if isShowingEmptyReadyFocus {
-                    noReadyTasksState
-                }
-            }
             .onAppear { viewModel.lastViewportCenter = viewportCenter(in: geo.size) }
             .onChange(of: geo.size) { viewModel.lastViewportCenter = viewportCenter(in: geo.size) }
             .onChange(of: viewModel.canvasOffset) { viewModel.lastViewportCenter = viewportCenter(in: geo.size) }
@@ -91,6 +84,15 @@ struct GraphCanvasView: View {
         }
         // Attached to the GeometryReader (always exactly the visible pane) rather than the inner
         // ZStack, whose oversized canvas content distorts overlay alignment.
+        .overlay {
+            // Centered placeholders — on the GeometryReader for the same reason as below, so they sit
+            // in the middle of the visible pane regardless of canvas pan/zoom.
+            if graphIsEmpty {
+                EmptyGraphState(viewModel: viewModel, viewportCenter: viewModel.lastViewportCenter)
+            } else if isShowingEmptyReadyFocus {
+                noReadyTasksState
+            }
+        }
         .overlay(alignment: .top) { toastOverlay }
         .overlay(alignment: .top) { criticalPathBanner }
         .overlay(alignment: .bottomLeading) { statusLegend }
@@ -713,6 +715,12 @@ struct GraphCanvasView: View {
     // MARK: - No Ready empty state (spec §15.3)
 
     /// Whether the Ready focus filter is active but nothing is ready to start.
+    /// Whether the graph currently renders no cards (no tasks in the plan, or all filtered out) —
+    /// drives the centered "No tasks yet" placeholder.
+    private var graphIsEmpty: Bool {
+        viewModel.renderSnapshot().orderedTasks.isEmpty
+    }
+
     private var isShowingEmptyReadyFocus: Bool {
         viewModel.activeFilters == [.readyToStart] && viewModel.count(of: .readyToStart) == 0
     }
