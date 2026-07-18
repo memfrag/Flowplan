@@ -58,10 +58,11 @@ struct TrackpadScrollCatcher: NSViewRepresentable {
             guard bounds.contains(pointInView) else { return event }
 
             // The window-wide monitor also fires over panels that overlap the canvas at the AppKit
-            // layer (e.g. the SwiftUI `.inspector`). Only pan when the pointer is genuinely over the
-            // canvas subtree; otherwise let the event through so that panel scrolls normally.
+            // layer (e.g. the SwiftUI `.inspector`). If the pointer sits inside a scroll view that
+            // doesn't contain us, that panel owns the event — let it through so it scrolls normally.
+            // Anything else (cards, connections, bare canvas) is ours to pan.
             if let hit = window.contentView?.hitTest(event.locationInWindow),
-               let superview, !hit.isDescendant(of: superview) {
+               enclosingForeignScrollView(of: hit) != nil {
                 return event
             }
 
@@ -73,6 +74,22 @@ struct TrackpadScrollCatcher: NSViewRepresentable {
             }
             onScroll?(CGSize(width: dx, height: dy))
             return nil // consume so nothing else scrolls
+        }
+
+        /// The nearest `NSScrollView` enclosing `view` that does *not* contain this catcher.
+        ///
+        /// A scroll view we live inside is just the pane hosting the canvas, so it must not block
+        /// panning; one we're outside of is a separate panel overlapping us (the inspector) and
+        /// should get the scroll event instead.
+        private func enclosingForeignScrollView(of view: NSView) -> NSScrollView? {
+            var candidate: NSView? = view
+            while let current = candidate {
+                if let scrollView = current as? NSScrollView, !isDescendant(of: scrollView) {
+                    return scrollView
+                }
+                candidate = current.superview
+            }
+            return nil
         }
 
         // `nonisolated` so it's callable from the (nonisolated) `deinit` under the module's
