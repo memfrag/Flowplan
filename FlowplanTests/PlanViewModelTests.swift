@@ -39,6 +39,27 @@ struct PlanViewModelTests {
         #expect(viewModel.zoomScale == 0.75)
     }
 
+    @Test func deletingSelectedTaskClearsSelectionThenRemovesIt() {
+        // Regression for #24: the selection must be cleared before the task is deleted, so the
+        // inspector drops its task-bound fields before SwiftData tears the model down.
+        let container = AppEnvironment.makeModelContainer(inMemory: true)
+        let store = PlanStore(modelContext: container.mainContext)
+        let viewModel = PlanViewModel()
+        viewModel.configure(store: store)
+        withExtendedLifetime(container) {
+            let plan = store.createPlan(title: "P")
+            viewModel.plan = plan
+            let task = store.createTask(in: plan, title: "A", at: .zero)
+            viewModel.selectTask(task.id)
+            #expect(viewModel.selectedTaskIDs.contains(task.id))
+
+            viewModel.deleteSelectedTaskOrDependency()
+
+            #expect(viewModel.selectedTaskIDs.isEmpty)
+            #expect(plan.tasks.isEmpty)
+        }
+    }
+
     @Test func reassigningSamePlanKeepsViewport() {
         let viewModel = PlanViewModel()
         let plan = Plan(title: "A")

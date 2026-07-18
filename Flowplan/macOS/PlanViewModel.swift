@@ -323,14 +323,17 @@ public final class PlanViewModel {
         guard let store else { return }
         let tasksToDelete = selectedTasks
         if !tasksToDelete.isEmpty {
+            // Clear the selection *before* deleting so the inspector drops its task-bound fields
+            // first. Otherwise SwiftUI re-reads a binding (e.g. tagsBinding → task.tags) on the
+            // just-deleted SwiftData model and traps.
+            clearSelection()
             for task in tasksToDelete {
                 store.deleteTask(task)
             }
-            clearSelection()
         } else if let dependencyID = selectedDependencyID,
                   let dependency = plan?.dependencies.first(where: { $0.id == dependencyID }) {
-            store.deleteDependency(dependency)
             clearSelection()
+            store.deleteDependency(dependency)
         }
     }
 
