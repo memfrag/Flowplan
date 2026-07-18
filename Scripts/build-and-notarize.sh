@@ -11,7 +11,10 @@ set -euo pipefail
 #   - Sparkle EdDSA keys in keychain (run: ./Sparkle-tools/bin/generate_keys)
 #
 # Usage:
-#   ./scripts/build-and-notarize.sh
+#   ./scripts/build-and-notarize.sh [--version X.Y.Z] [--title "Release title"] \
+#                                   [--notes "..." | --notes-file PATH]
+#   Any value not provided is prompted for interactively. Without --notes/--notes-file,
+#   GitHub auto-generates the release notes (PR-based).
 # -----------------------------------------------------------------------------
 
 # --- Constants ---
@@ -36,6 +39,37 @@ error() {
     echo "ERROR: $1" >&2
     exit 1
 }
+
+# --- Arguments (optional; provide these to run non-interactively) ---
+VERSION_ARG=""
+RELEASE_TITLE_ARG=""
+NOTES_ARG=""
+NOTES_FILE_ARG=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --version) [ $# -ge 2 ] || error "--version requires a value"; VERSION_ARG="$2"; shift 2 ;;
+        --version=*) VERSION_ARG="${1#*=}"; shift ;;
+        --title) [ $# -ge 2 ] || error "--title requires a value"; RELEASE_TITLE_ARG="$2"; shift 2 ;;
+        --title=*) RELEASE_TITLE_ARG="${1#*=}"; shift ;;
+        --notes) [ $# -ge 2 ] || error "--notes requires a value"; NOTES_ARG="$2"; shift 2 ;;
+        --notes=*) NOTES_ARG="${1#*=}"; shift ;;
+        --notes-file) [ $# -ge 2 ] || error "--notes-file requires a value"; NOTES_FILE_ARG="$2"; shift 2 ;;
+        --notes-file=*) NOTES_FILE_ARG="${1#*=}"; shift ;;
+        -h|--help)
+            echo "Usage: $0 [--version X.Y.Z] [--title \"Release title\"] [--notes \"...\" | --notes-file PATH]"
+            echo "  Any value not provided is prompted for interactively."
+            echo "  Without --notes/--notes-file, GitHub auto-generates the notes (PR-based)."
+            exit 0 ;;
+        *) error "Unknown argument: $1" ;;
+    esac
+done
+
+if [ -n "$NOTES_ARG" ] && [ -n "$NOTES_FILE_ARG" ]; then
+    error "--notes and --notes-file are mutually exclusive."
+fi
+if [ -n "$NOTES_FILE_ARG" ] && [ ! -f "$NOTES_FILE_ARG" ]; then
+    error "Notes file not found: $NOTES_FILE_ARG"
+fi
 
 # --- Clean and create build directory ---
 echo "==> Cleaning build directory..."
@@ -64,24 +98,29 @@ if [ -n "$LATEST_TAG" ]; then
     echo "    Latest release: $LATEST_TAG"
 fi
 
-NEED_NEW_VERSION=false
-if [ -z "$LATEST_TAG" ]; then
-    echo "    No existing releases found."
-    read -rp "    Enter version to release [$CURRENT_VERSION]: " VERSION
-    VERSION="${VERSION:-$CURRENT_VERSION}"
+if [ -n "$VERSION_ARG" ]; then
+    VERSION="$VERSION_ARG"
+    echo "    Using version: $VERSION"
 else
-    if [ "$CURRENT_VERSION" = "$LATEST_TAG" ]; then
-        NEED_NEW_VERSION=true
-        echo "    Current version matches latest release."
-    fi
-    if [ "$NEED_NEW_VERSION" = true ]; then
-        read -rp "    Enter new version: " VERSION
-        if [ -z "$VERSION" ]; then
-            error "Version cannot be empty."
-        fi
-    else
+    NEED_NEW_VERSION=false
+    if [ -z "$LATEST_TAG" ]; then
+        echo "    No existing releases found."
         read -rp "    Enter version to release [$CURRENT_VERSION]: " VERSION
         VERSION="${VERSION:-$CURRENT_VERSION}"
+    else
+        if [ "$CURRENT_VERSION" = "$LATEST_TAG" ]; then
+            NEED_NEW_VERSION=true
+            echo "    Current version matches latest release."
+        fi
+        if [ "$NEED_NEW_VERSION" = true ]; then
+            read -rp "    Enter new version: " VERSION
+            if [ -z "$VERSION" ]; then
+                error "Version cannot be empty."
+            fi
+        else
+            read -rp "    Enter version to release [$CURRENT_VERSION]: " VERSION
+            VERSION="${VERSION:-$CURRENT_VERSION}"
+        fi
     fi
 fi
 
@@ -170,8 +209,12 @@ echo "    Stapled."
 echo "==> Signing for Sparkle..."
 "$SPARKLE_TOOLS_DIR/bin/sign_update" "$DMG_PATH" || error "Sparkle signing failed."
 
-# --- Prompt for release title ---
-read -rp "==> Enter release title: " RELEASE_TITLE
+# --- Release title (from --title, else prompt) ---
+if [ -n "$RELEASE_TITLE_ARG" ]; then
+    RELEASE_TITLE="$RELEASE_TITLE_ARG"
+else
+    read -rp "==> Enter release title: " RELEASE_TITLE
+fi
 if [ -z "$RELEASE_TITLE" ]; then
     RELEASE_TITLE="$APP_NAME $VERSION"
 fi
@@ -181,10 +224,19 @@ echo "==> Creating GitHub release..."
 cd "$PROJECT_DIR"
 git tag "$TAG" || error "Failed to create tag $TAG."
 git push origin "$TAG" || error "Failed to push tag $TAG."
+# Custom notes (--notes/--notes-file) override GitHub's PR-based auto-generation.
+if [ -n "$NOTES_FILE_ARG" ]; then
+    NOTES_FLAGS=(--notes-file "$NOTES_FILE_ARG")
+elif [ -n "$NOTES_ARG" ]; then
+    NOTES_FLAGS=(--notes "$NOTES_ARG")
+else
+    NOTES_FLAGS=(--generate-notes)
+fi
+
 gh release create "$TAG" "$DMG_PATH" \
     --repo "$GITHUB_REPO" \
     --title "$RELEASE_TITLE" \
-    --generate-notes || error "Failed to create GitHub release."
+    "${NOTES_FLAGS[@]}" || error "Failed to create GitHub release."
 echo "    Release created: $TAG"
 
 # --- Generate appcast ---
