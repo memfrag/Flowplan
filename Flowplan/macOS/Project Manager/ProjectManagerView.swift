@@ -38,7 +38,13 @@ struct ProjectManagerView: View {
         "checklist", "target", "clock", "person.2", "envelope", "megaphone",
         "dollarsign.circle", "chart.line.uptrend.xyaxis", "graduationcap", "cross.case",
         "lock", "desktopcomputer", "map", "car", "puzzlepiece", "ladybug",
-        "macwindow", "laptopcomputer", "printer", "scanner", "pc"
+        "macwindow", "laptopcomputer", "printer", "scanner", "pc",
+        "fork.knife", "carrot", "umbrella", "thermometer", "app.grid",
+        "suitcase", "graph.2d", "graph.3d", "basketball", "tennisball",
+        "microphone", "bubble", "waveform", "bookmark", "link",
+        "dumbbell", "trophy", "die.face.5", "popcorn", "key",
+        "flask", "hanger", "tshirt", "movieclapper", "ticket",
+        "film", "sunglasses"
     ]
 
     private var selectedPlan: Plan? {
