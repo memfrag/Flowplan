@@ -4,6 +4,7 @@
 
 import SwiftUI
 import SwiftUIToolbox
+import MarkdownUI
 
 /// The right-hand inspector for the selected task (spec §7.5). Built from SwiftUIToolbox's
 /// inspector grid components, with custom dependency sections below.
@@ -309,27 +310,85 @@ struct TaskInspectorPanel: View {
 
     // MARK: - Description
 
+    @State private var descriptionPreview = false
+    @State private var notesPreview = false
+
     private func descriptionSection(_ task: PlanTask) -> some View {
+        markdownEditor(
+            title: "Description",
+            text: detailsBinding(task),
+            isPreview: $descriptionPreview,
+            minHeight: 90,
+            placeholder: "What does this task entail?"
+        )
+    }
+
+    /// A text area with an Edit/Preview toggle: raw editing via `TextEditor`, or a MarkdownUI
+    /// rendering of the same text.
+    @ViewBuilder
+    private func markdownEditor(
+        title: String,
+        text: Binding<String>,
+        isPreview: Binding<Bool>,
+        minHeight: CGFloat,
+        placeholder: String
+    ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Description").font(.headline).foregroundStyle(.secondary)
-            TextEditor(text: detailsBinding(task))
-                .font(.body)
-                .frame(minHeight: 90)
-                .scrollContentBackground(.hidden)
-                .padding(6)
-                .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary))
-                .overlay(alignment: .topLeading) {
-                    if task.details.isEmpty {
-                        Text("What does this task entail?")
-                            .font(.body)
-                            .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 14)
-                            .allowsHitTesting(false)
-                    }
+            HStack {
+                Text(title).font(.headline).foregroundStyle(.secondary)
+                Spacer()
+                Picker("", selection: isPreview) {
+                    Image(systemName: "pencil").tag(false)
+                    Image(systemName: "eye").tag(true)
                 }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                .help("Switch between editing and a Markdown preview")
+            }
+
+            if isPreview.wrappedValue {
+                markdownView(text.wrappedValue, placeholder: placeholder)
+                    .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .topLeading)
+                    .padding(6)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary))
+            } else {
+                TextEditor(text: text)
+                    .font(.body)
+                    .frame(minHeight: minHeight)
+                    .scrollContentBackground(.hidden)
+                    .padding(6)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary))
+                    .overlay(alignment: .topLeading) {
+                        if text.wrappedValue.isEmpty {
+                            Text(placeholder)
+                                .font(.body)
+                                .foregroundStyle(.tertiary)
+                                .padding(.horizontal, 11)
+                                .padding(.vertical, 14)
+                                .allowsHitTesting(false)
+                        }
+                    }
+            }
         }
         .padding(.horizontal, 8)
+    }
+
+    /// Renders `text` as Markdown, falling back to plain text if it can't be parsed and to a muted
+    /// placeholder when empty.
+    @ViewBuilder
+    private func markdownView(_ text: String, placeholder: String) -> some View {
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            Text(placeholder).font(.body).foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else if let document = try? MarkdownDocument(text) {
+            Markdown(document, lazy: false)
+                .tint(.blue)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            Text(text).font(.body).textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     // MARK: - Comments
@@ -354,9 +413,7 @@ struct TaskInspectorPanel: View {
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
-                    Text(comment.text)
-                        .font(.callout)
-                        .textSelection(.enabled)
+                    markdownView(comment.text, placeholder: "")
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -391,16 +448,13 @@ struct TaskInspectorPanel: View {
     // MARK: - Notes
 
     private func notesSection(_ task: PlanTask) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Notes").font(.headline).foregroundStyle(.secondary)
-            TextEditor(text: notesBinding(task))
-                .font(.body)
-                .frame(minHeight: 80)
-                .scrollContentBackground(.hidden)
-                .padding(6)
-                .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary))
-        }
-        .padding(.horizontal, 8)
+        markdownEditor(
+            title: "Notes",
+            text: notesBinding(task),
+            isPreview: $notesPreview,
+            minHeight: 80,
+            placeholder: "Additional notes…"
+        )
     }
 
     // MARK: - Due date
