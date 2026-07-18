@@ -386,10 +386,10 @@ struct TaskInspectorPanel: View {
     }
 
     private func dueDateBinding(_ task: PlanTask) -> Binding<Date> {
-        Binding(
-            get: { task.dueDate ?? Calendar.current.startOfDay(for: .now) },
-            set: { viewModel.store?.updateTask(task, dueDate: .some($0)) }
-        )
+        let today = Calendar.current.startOfDay(for: .now)
+        return taskBinding(task, default: today, get: { $0.dueDate ?? today }) { task, value in
+            viewModel.store?.updateTask(task, dueDate: .some(value))
+        }
     }
 
     /// Adds/removes a Calendar event mirroring the task's due date (see ``CalendarService``).
@@ -474,55 +474,65 @@ struct TaskInspectorPanel: View {
 
     // MARK: - Bindings
 
-    private func titleBinding(_ task: PlanTask) -> Binding<String> {
-        Binding(
-            get: { task.title },
-            set: { task.title = $0; task.touch(); viewModel.store?.save() }
-        )
-    }
-
-    private func detailsBinding(_ task: PlanTask) -> Binding<String> {
-        Binding(
-            get: { task.details },
-            set: { task.details = $0; task.touch(); viewModel.store?.save() }
-        )
-    }
-
-    private func notesBinding(_ task: PlanTask) -> Binding<String> {
-        Binding(
-            get: { task.notes },
-            set: { task.notes = $0; task.touch(); viewModel.store?.save() }
-        )
-    }
-
-    /// Edits tags as a comma-separated string; parses into trimmed, de-duplicated, non-empty tags.
-    private func tagsBinding(_ task: PlanTask) -> Binding<String> {
-        Binding(
-            get: { task.tags.joined(separator: ", ") },
+    /// A binding over a task looked up **by id** on every access, so it never dereferences a task
+    /// that was deleted while the inspector was still mounted — reading a deleted SwiftData model
+    /// traps (see the delete-ordering fix in PlanViewModel). Returns `fallback` once the task is gone.
+    private func taskBinding<Value>(
+        _ task: PlanTask,
+        default fallback: Value,
+        get: @escaping (PlanTask) -> Value,
+        set: @escaping (PlanTask, Value) -> Void
+    ) -> Binding<Value> {
+        let id = task.id
+        return Binding(
+            get: { viewModel.task(id: id).map(get) ?? fallback },
             set: { newValue in
-                var seen = Set<String>()
-                let tags = newValue
-                    .split(separator: ",")
-                    .map { $0.trimmingCharacters(in: .whitespaces) }
-                    .filter { !$0.isEmpty && seen.insert($0).inserted }
-                task.tags = tags
-                task.touch()
-                viewModel.store?.save()
+                guard let task = viewModel.task(id: id) else { return }
+                set(task, newValue)
             }
         )
     }
 
+    private func titleBinding(_ task: PlanTask) -> Binding<String> {
+        taskBinding(task, default: "", get: { $0.title }) { task, value in
+            task.title = value; task.touch(); viewModel.store?.save()
+        }
+    }
+
+    private func detailsBinding(_ task: PlanTask) -> Binding<String> {
+        taskBinding(task, default: "", get: { $0.details }) { task, value in
+            task.details = value; task.touch(); viewModel.store?.save()
+        }
+    }
+
+    private func notesBinding(_ task: PlanTask) -> Binding<String> {
+        taskBinding(task, default: "", get: { $0.notes }) { task, value in
+            task.notes = value; task.touch(); viewModel.store?.save()
+        }
+    }
+
+    /// Edits tags as a comma-separated string; parses into trimmed, de-duplicated, non-empty tags.
+    private func tagsBinding(_ task: PlanTask) -> Binding<String> {
+        taskBinding(task, default: "", get: { $0.tags.joined(separator: ", ") }) { task, newValue in
+            var seen = Set<String>()
+            task.tags = newValue
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty && seen.insert($0).inserted }
+            task.touch()
+            viewModel.store?.save()
+        }
+    }
+
     private func progressBinding(_ task: PlanTask) -> Binding<TaskProgress> {
-        Binding(
-            get: { task.progress },
-            set: { viewModel.setProgress($0, for: task) }
-        )
+        taskBinding(task, default: .notStarted, get: { $0.progress }) { task, value in
+            viewModel.setProgress(value, for: task)
+        }
     }
 
     private func priorityBinding(_ task: PlanTask) -> Binding<TaskPriority?> {
-        Binding(
-            get: { task.priority },
-            set: { task.priority = $0; task.touch(); viewModel.store?.save() }
-        )
+        taskBinding(task, default: nil, get: { $0.priority }) { task, value in
+            task.priority = value; task.touch(); viewModel.store?.save()
+        }
     }
 }
