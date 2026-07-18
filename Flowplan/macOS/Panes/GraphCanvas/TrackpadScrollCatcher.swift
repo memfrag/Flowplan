@@ -57,6 +57,14 @@ struct TrackpadScrollCatcher: NSViewRepresentable {
             let pointInView = convert(event.locationInWindow, from: nil)
             guard bounds.contains(pointInView) else { return event }
 
+            // The window-wide monitor also fires over panels that overlap the canvas at the AppKit
+            // layer (e.g. the SwiftUI `.inspector`). Only pan when the pointer is genuinely over the
+            // canvas subtree; otherwise let the event through so that panel scrolls normally.
+            if let hit = window.contentView?.hitTest(event.locationInWindow),
+               let superview, !hit.isDescendant(of: superview) {
+                return event
+            }
+
             var dx = event.scrollingDeltaX
             var dy = event.scrollingDeltaY
             if !event.hasPreciseScrollingDeltas {
