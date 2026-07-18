@@ -28,6 +28,7 @@ struct MacApp: App {
     var body: some Scene {
         MainWindow(updater: updaterController.updater)
         ProjectManagerWindow()
+        TaskEditorWindow()
         SettingsWindow()
         AboutWindow(developedBy: "Apparata AB",
                     attributionsWindowID: AttributionsWindow.windowID)

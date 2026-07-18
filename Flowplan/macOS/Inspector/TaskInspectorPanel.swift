@@ -11,11 +11,23 @@ struct TaskInspectorPanel: View {
 
     @Bindable var viewModel: PlanViewModel
 
+    /// The narrow sidebar inspector (`.column`) or the wider pop-out editor window (`.wide`).
+    var layout: Layout = .column
+
+    enum Layout { case column, wide }
+
+    @Environment(\.openWindow) private var openWindow
+
     var body: some View {
         if let task = viewModel.selectedTask {
-            ScrollView {
-                content(for: task)
-                    .padding(.vertical, 8)
+            switch layout {
+            case .column:
+                ScrollView {
+                    content(for: task)
+                        .padding(.vertical, 8)
+                }
+            case .wide:
+                wideContent(for: task)
             }
         } else if viewModel.selectedTaskIDs.count > 1 {
             multiSelection
@@ -41,95 +53,138 @@ struct TaskInspectorPanel: View {
     // MARK: - Content
 
     @ViewBuilder
+    /// The narrow single-column layout used by the sidebar inspector.
     private func content(for task: PlanTask) -> some View {
         let state = viewModel.displayState(of: task)
-
-        VStack(alignment: .leading, spacing: 16) {
-            InspectorGrid {
-                InspectorSectionHeader("Task")
-
-                GridRow {
-                    InspectorLabel("ID")
-                    InspectorTextValue("\(task.number)")
-                }
-
-                GridRow {
-                    InspectorLabel("Title")
-                    InspectorTextField(titleBinding(task))
-                }
-
-                GridRow {
-                    InspectorLabel("Status")
-                    HStack(spacing: 6) {
-                        Image(systemName: state.systemImage).foregroundStyle(state.color)
-                        Text(state.description)
-                        Spacer()
-                    }
-                    .font(.subheadline)
-                    .padding(.trailing, 8)
-                }
-
-                GridRow {
-                    InspectorLabel("Progress")
-                    // A Blocked task's state is derived from its dependencies — it can't be changed
-                    // manually until its blockers are Done (see the explanation below).
-                    progressPicker(task)
-                        .disabled(state == .backlog)
-                }
-
-                GridRow {
-                    InspectorLabel("Priority")
-                    priorityPicker(task)
-                }
-
-                GridRow {
-                    InspectorLabel("Estimate")
-                    InspectorTextValue(task.estimate?.displayText ?? "—")
-                }
-
-                GridRow {
-                    InspectorLabel("Due Date")
-                    dueDateControl(task)
-                }
-
-                if task.dueDate != nil {
-                    GridRow {
-                        InspectorLabel("Calendar")
-                        CalendarButton(task: task) { message in
-                            viewModel.activeAlert = PlanAlert(title: "Calendar", message: message)
-                        }
-                    }
-                }
-
-                GridRow {
-                    InspectorLabel("Tags")
-                    InspectorTextField(tagsBinding(task))
-                }
-
-                InspectorDivider()
-
-                GridRow {
-                    InspectorLabel("Created")
-                    InspectorTextValue(Self.formatted(task.createdAt))
-                }
-
-                GridRow {
-                    InspectorLabel("Updated")
-                    InspectorTextValue(Self.formatted(task.updatedAt))
-                }
-            }
-
-            if state == .backlog {
-                backlogExplanation(task)
-            }
-
+        return VStack(alignment: .leading, spacing: 16) {
+            fieldsSection(task, state: state)
             descriptionSection(task)
-
             dependencySections(task)
-
             commentsSection(task)
-
             notesSection(task)
+        }
+    }
+
+    /// The two-column layout used by the pop-out editor window (see ``TaskEditorWindow``): fields and
+    /// free text on the left, relationships and comments on the right, each independently scrollable.
+    private func wideContent(for task: PlanTask) -> some View {
+        let state = viewModel.displayState(of: task)
+        return HStack(alignment: .top, spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    fieldsSection(task, state: state)
+                    descriptionSection(task)
+                    notesSection(task)
+                }
+                .padding(.vertical, 8)
+            }
+            .frame(maxWidth: .infinity)
+
+            Divider()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    dependencySections(task)
+                    commentsSection(task)
+                }
+                .padding(.vertical, 8)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private func fieldsSection(_ task: PlanTask, state: TaskDisplayState) -> some View {
+        InspectorGrid {
+            InspectorSectionHeader("Task")
+                .overlay(alignment: .trailing) {
+                    // Only offer "pop out to a window" from the narrow inspector — no point from the
+                    // window itself.
+                    if layout == .column {
+                        Button {
+                            openWindow(id: TaskEditorWindow.windowID, value: task.id)
+                        } label: {
+                            Image(systemName: "macwindow")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Open this task in a separate window")
+                        .padding(.trailing, 8)
+                    }
+                }
+
+            GridRow {
+                InspectorLabel("ID")
+                InspectorTextValue("\(task.number)")
+            }
+
+            GridRow {
+                InspectorLabel("Title")
+                InspectorTextField(titleBinding(task))
+            }
+
+            GridRow {
+                InspectorLabel("Status")
+                HStack(spacing: 6) {
+                    Image(systemName: state.systemImage).foregroundStyle(state.color)
+                    Text(state.description)
+                    Spacer()
+                }
+                .font(.subheadline)
+                .padding(.trailing, 8)
+            }
+
+            GridRow {
+                InspectorLabel("Progress")
+                // A Blocked task's state is derived from its dependencies — it can't be changed
+                // manually until its blockers are Done (see the explanation below).
+                progressPicker(task)
+                    .disabled(state == .backlog)
+            }
+
+            GridRow {
+                InspectorLabel("Priority")
+                priorityPicker(task)
+            }
+
+            GridRow {
+                InspectorLabel("Estimate")
+                InspectorTextValue(task.estimate?.displayText ?? "—")
+            }
+
+            GridRow {
+                InspectorLabel("Due Date")
+                dueDateControl(task)
+            }
+
+            if task.dueDate != nil {
+                GridRow {
+                    InspectorLabel("Calendar")
+                    CalendarButton(task: task) { message in
+                        viewModel.activeAlert = PlanAlert(title: "Calendar", message: message)
+                    }
+                }
+            }
+
+            GridRow {
+                InspectorLabel("Tags")
+                InspectorTextField(tagsBinding(task))
+            }
+
+            InspectorDivider()
+
+            GridRow {
+                InspectorLabel("Created")
+                InspectorTextValue(Self.formatted(task.createdAt))
+            }
+
+            GridRow {
+                InspectorLabel("Updated")
+                InspectorTextValue(Self.formatted(task.updatedAt))
+            }
+        }
+
+        if state == .backlog {
+            backlogExplanation(task)
         }
     }
 
