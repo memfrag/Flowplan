@@ -184,6 +184,20 @@ struct PlanStoreTests {
         }
     }
 
+    @Test func planFilterMatchesTitleAndGroupCaseInsensitively() {
+        withStore { store in
+            let plan = store.createPlan(title: "Flowplan")
+            store.setGroup("Side Projects", for: plan)
+
+            #expect(plan.matches(query: "flow"))       // title, case-insensitive
+            #expect(plan.matches(query: "SIDE"))       // group, case-insensitive
+            #expect(plan.matches(query: "  plan  "))   // surrounding whitespace ignored
+            #expect(plan.matches(query: ""))           // empty query matches everything
+            #expect(plan.matches(query: "   "))        // as does whitespace-only
+            #expect(!plan.matches(query: "archive"))   // no match in title or group
+        }
+    }
+
     @Test func backfillPlanOrderNumbersLegacyPlansByCreation() {
         withStore { store in
             // Simulate legacy plans that predate the ordering feature: all at the default 0.

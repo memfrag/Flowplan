@@ -127,4 +127,15 @@ extension Plan {
     public func touch() {
         updatedAt = .now
     }
+
+    /// Whether this project matches a free-text filter query.
+    ///
+    /// Deliberately limited to the name and group — the text visible in a project row — so it's
+    /// always apparent why a project matched. An empty or whitespace-only query matches everything.
+    public func matches(query: String) -> Bool {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return true }
+        return title.localizedCaseInsensitiveContains(trimmed)
+            || group.localizedCaseInsensitiveContains(trimmed)
+    }
 }

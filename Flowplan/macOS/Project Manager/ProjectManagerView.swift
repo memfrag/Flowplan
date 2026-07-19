@@ -12,6 +12,7 @@ struct ProjectManagerView: View {
     @Query(sort: Plan.displayOrder) private var plans: [Plan]
 
     @State private var selectedPlanID: UUID?
+    @State private var searchText: String = ""
     @State private var renamingPlan: Plan?
     @State private var renameText: String = ""
     @State private var groupingPlan: Plan?
@@ -59,10 +60,22 @@ struct ProjectManagerView: View {
         let plans: [Plan]
     }
 
+    /// Whether the list is currently showing a subset of the projects.
+    private var isFiltering: Bool {
+        !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// Projects matching the filter, by name or group.
+    private var filteredPlans: [Plan] {
+        guard isFiltering else { return plans }
+        return plans.filter { $0.matches(query: searchText) }
+    }
+
     /// `plans` is already sorted by group, so equal-group runs are contiguous and can be sliced
-    /// without re-sorting — which keeps section order identical to the flat query order.
+    /// without re-sorting — which keeps section order identical to the flat query order. Filtering
+    /// preserves that order, so empty groups simply drop out.
     private var groupedPlans: [PlanSection] {
-        plans.reduce(into: [PlanSection]()) { sections, plan in
+        filteredPlans.reduce(into: [PlanSection]()) { sections, plan in
             if let last = sections.last, last.name == plan.group {
                 sections[sections.count - 1] = PlanSection(name: last.name, plans: last.plans + [plan])
             } else {
@@ -99,13 +112,21 @@ struct ProjectManagerView: View {
                 }
             }
         }
+        // Reordering is meaningless while filtering: the offsets index into the visible subset, so a
+        // drag would renumber against positions that don't match the real list.
+        // `.onMove` must precede `.moveDisabled` — the latter erases `DynamicViewContent`.
         .onMove { source, destination in move(in: section, from: source, to: destination) }
+        .moveDisabled(isFiltering)
     }
 
     /// Reorders within a single group. `.onMove` offsets are relative to the section's own array, so
     /// the move is applied to that slice and the *whole* display order is then handed to the store —
     /// passing the raw offsets against `plans` would scramble the other groups.
     private func move(in section: PlanSection, from source: IndexSet, to destination: Int) {
+        // Belt and braces with `.moveDisabled`: `groupedPlans` is filtered, so acting on a move while
+        // a filter is active would write sort orders derived from a partial list.
+        guard !isFiltering else { return }
+
         var reorderedSection = section.plans
         reorderedSection.move(fromOffsets: source, toOffset: destination)
         let reordered = groupedPlans.flatMap { $0.name == section.name ? reorderedSection : $0.plans }
@@ -128,6 +149,12 @@ struct ProjectManagerView: View {
                 }
             }
             .frame(minWidth: 200)
+            .searchable(text: $searchText, placement: .sidebar, prompt: "Filter projects…")
+            .overlay {
+                if isFiltering && groupedPlans.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
+                }
+            }
             .toolbar {
                 ToolbarItem {
                     Button {
