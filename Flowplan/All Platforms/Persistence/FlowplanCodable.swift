@@ -20,6 +20,7 @@ nonisolated public struct PlanDTO: Codable, Sendable {
     public var icon: String? = nil
     public var summary: String? = nil
     public var repositoryURLs: [String]? = nil
+    public var group: String? = nil
     public var nextTaskNumber: Int? = nil
 }
 
@@ -74,6 +75,7 @@ extension PlanDTO {
         self.icon = plan.icon
         self.summary = plan.summary.isEmpty ? nil : plan.summary
         self.repositoryURLs = plan.repositoryURLs.isEmpty ? nil : plan.repositoryURLs
+        self.group = plan.group.isEmpty ? nil : plan.group
         self.nextTaskNumber = plan.nextTaskNumber
         self.tasks = plan.tasks
             .sorted { $0.createdAt < $1.createdAt }
@@ -128,6 +130,7 @@ extension PlanDTO {
             icon: icon ?? "folder",
             summary: summary ?? "",
             repositoryURLs: repositoryURLs ?? [],
+            group: group ?? "",
             createdAt: createdAt,
             updatedAt: updatedAt
         )

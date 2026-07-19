@@ -406,6 +406,7 @@ final class MCPTaskService {
             id: plan.id,
             title: plan.title,
             summary: plan.summary.isEmpty ? nil : plan.summary,
+            group: plan.group.isEmpty ? nil : plan.group,
             repositoryURLs: plan.repositoryURLs,
             taskCounts: counts,
             updatedAt: plan.updatedAt

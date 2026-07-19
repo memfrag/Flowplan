@@ -24,6 +24,7 @@ struct FlowplanCodableTests {
     @Test func roundTripPreservesTasksDependenciesAndMetadata() throws {
         try withStore { store in
             let plan = store.createPlan(title: "Round Trip")
+            store.setGroup("Work", for: plan)
             let a = store.createTask(in: plan, title: "A", at: .zero)
             let b = store.createTask(in: plan, title: "B", at: .zero)
             try store.createDependency(in: plan, from: a, to: b)
@@ -34,6 +35,7 @@ struct FlowplanCodableTests {
             let restored = try PlanDTO(jsonData: data).makePlan()
 
             #expect(restored.title == "Round Trip")
+            #expect(restored.group == "Work")
             #expect(restored.tasks.count == 2)
             #expect(restored.dependencies.count == 1)
             #expect(restored.tasks.first { $0.title == "A" }?.dueDate != nil)

@@ -25,8 +25,15 @@ public final class Plan {
     /// Associated GitHub (or other) repository URLs.
     public var repositoryURLs: [String] = []
 
+    /// The name of the group this project belongs to; empty means ungrouped. Groups are ad hoc —
+    /// there's no group entity, so a group exists exactly as long as some project names it.
+    public var group: String = ""
+
     /// Manual display order for the project list and sidebar picker; lower comes first. Backfilled
     /// by creation order for projects that predate the feature, and new projects go to the end.
+    ///
+    /// Indices are global rather than per-group; ``group`` is the primary sort key, so a globally
+    /// increasing order still lays out correctly within each group.
     public var sortOrder: Int = 0
 
     /// The next per-plan task number to hand out. Starts at 1 and only ever increases, so task
@@ -61,6 +68,7 @@ public final class Plan {
         icon: String = "folder",
         summary: String = "",
         repositoryURLs: [String] = [],
+        group: String = "",
         sortOrder: Int = 0,
         nextTaskNumber: Int = 1,
         createdAt: Date = .now,
@@ -73,6 +81,7 @@ public final class Plan {
         self.icon = icon
         self.summary = summary
         self.repositoryURLs = repositoryURLs
+        self.group = group
         self.sortOrder = sortOrder
         self.nextTaskNumber = nextTaskNumber
         self.createdAt = createdAt
@@ -80,6 +89,22 @@ public final class Plan {
         self.tasksStorage = tasks
         self.dependenciesStorage = dependencies
     }
+}
+
+// MARK: - Ordering
+
+extension Plan {
+
+    /// The canonical order for every project list: grouped first (the empty, ungrouped name sorts
+    /// ahead of all others), then by manual order, then by creation date as a tiebreaker.
+    ///
+    /// Shared by every `@Query` and fetch so the Project Manager, sidebar picker and command palette
+    /// can't drift out of sync.
+    public static let displayOrder: [SortDescriptor<Plan>] = [
+        SortDescriptor(\.group),
+        SortDescriptor(\.sortOrder),
+        SortDescriptor(\.createdAt)
+    ]
 }
 
 // MARK: - Convenience

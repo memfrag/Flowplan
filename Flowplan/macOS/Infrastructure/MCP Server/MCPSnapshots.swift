@@ -11,6 +11,8 @@ nonisolated struct ProjectSnapshot: Codable, Sendable {
     var id: UUID
     var title: String
     var summary: String?
+    /// The group the project belongs to, or `nil` when ungrouped.
+    var group: String?
     var repositoryURLs: [String]
     /// Task counts keyed by derived state (`blocked`, `ready`, `in_progress`, `done`, `closed`).
     var taskCounts: [String: Int]

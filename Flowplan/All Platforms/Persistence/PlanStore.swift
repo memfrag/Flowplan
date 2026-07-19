@@ -25,10 +25,24 @@ public final class PlanStore {
     // MARK: - Plans
 
     public func allPlans() -> [Plan] {
-        let descriptor = FetchDescriptor<Plan>(
-            sortBy: [SortDescriptor(\.sortOrder), SortDescriptor(\.createdAt)]
-        )
+        let descriptor = FetchDescriptor<Plan>(sortBy: Plan.displayOrder)
         return (try? modelContext.fetch(descriptor)) ?? []
+    }
+
+    /// The distinct group names in use, alphabetically. Excludes the empty (ungrouped) name.
+    public func planGroups() -> [String] {
+        Array(Set(allPlans().map(\.group))).filter { !$0.isEmpty }.sorted()
+    }
+
+    /// Moves a project into a group (empty name = ungrouped), sending it to the end of that group so
+    /// it doesn't wedge itself into the middle based on its previous position.
+    public func setGroup(_ group: String, for plan: Plan) {
+        let trimmed = group.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard plan.group != trimmed else { return }
+        plan.group = trimmed
+        plan.sortOrder = nextPlanSortOrder()
+        plan.touch()
+        save()
     }
 
     /// Seeds the sample plan if the store is empty. Safe to call on every launch.

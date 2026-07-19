@@ -134,6 +134,56 @@ struct PlanStoreTests {
         }
     }
 
+    @Test func plansAreOrderedByGroupWithUngroupedFirst() {
+        withStore { store in
+            let loose = store.createPlan(title: "Loose")
+            let work1 = store.createPlan(title: "Work 1")
+            let home = store.createPlan(title: "Home")
+            let work2 = store.createPlan(title: "Work 2")
+
+            store.setGroup("Work", for: work1)
+            store.setGroup("Home", for: home)
+            store.setGroup("Work", for: work2)
+
+            // Ungrouped ("") sorts ahead of everything; groups are alphabetical; within a group the
+            // manual sort order applies.
+            #expect(store.allPlans().map(\.title) == ["Loose", "Home", "Work 1", "Work 2"])
+            #expect(loose.group.isEmpty)
+        }
+    }
+
+    @Test func setGroupMovesPlanToEndOfItsNewGroup() {
+        withStore { store in
+            let first = store.createPlan(title: "First")
+            let second = store.createPlan(title: "Second")
+            store.setGroup("G", for: first)
+            store.setGroup("G", for: second)
+
+            // "First" was created earlier, but joining a group sends a project to the group's end,
+            // so re-adding it puts it after "Second" rather than wedging it back in front.
+            store.setGroup("", for: first)
+            store.setGroup("G", for: first)
+            #expect(store.allPlans().map(\.title) == ["Second", "First"])
+        }
+    }
+
+    @Test func reorderWithinGroupLeavesOtherGroupsIntact() {
+        withStore { store in
+            let a = store.createPlan(title: "A")
+            let b = store.createPlan(title: "B")
+            let x = store.createPlan(title: "X")
+            let y = store.createPlan(title: "Y")
+            for plan in [a, b] { store.setGroup("Alpha", for: plan) }
+            for plan in [x, y] { store.setGroup("Beta", for: plan) }
+            #expect(store.allPlans().map(\.title) == ["A", "B", "X", "Y"])
+
+            // Swapping within Beta must not disturb Alpha — this is what the Project Manager's
+            // section-relative `.onMove` produces once it rebuilds the full display order.
+            store.reorderPlans([a, b, y, x])
+            #expect(store.allPlans().map(\.title) == ["A", "B", "Y", "X"])
+        }
+    }
+
     @Test func backfillPlanOrderNumbersLegacyPlansByCreation() {
         withStore { store in
             // Simulate legacy plans that predate the ordering feature: all at the default 0.

@@ -342,12 +342,13 @@ struct CommandPaletteView: View {
     private func projectItems() -> [PaletteItem] {
         store.allPlans().map { plan in
             let isCurrent = viewModel.plan?.id == plan.id
+            let status = isCurrent ? "Current Project" : "Switch Project"
             return PaletteItem(
                 id: "project.\(plan.id.uuidString)",
                 title: plan.title.isEmpty ? "Untitled Plan" : plan.title,
-                subtitle: isCurrent ? "Current Project" : "Switch Project",
+                subtitle: plan.group.isEmpty ? status : "\(status) · \(plan.group)",
                 systemImage: plan.icon,
-                keywords: "project plan open switch"
+                keywords: "project plan open switch \(plan.group)"
             ) {
                 guard !isCurrent else { return }
                 viewModel.plan = plan

@@ -9,11 +9,13 @@ import SwiftData
 struct ProjectManagerView: View {
 
     @Environment(PlanStore.self) private var store
-    @Query(sort: [SortDescriptor(\Plan.sortOrder), SortDescriptor(\Plan.createdAt)]) private var plans: [Plan]
+    @Query(sort: Plan.displayOrder) private var plans: [Plan]
 
     @State private var selectedPlanID: UUID?
     @State private var renamingPlan: Plan?
     @State private var renameText: String = ""
+    @State private var groupingPlan: Plan?
+    @State private var newGroupText: String = ""
 
     /// The repository URL currently being imported (drives the per-row spinner), if any.
     @State private var importingRepo: String?
@@ -51,39 +53,78 @@ struct ProjectManagerView: View {
         plans.first { $0.id == selectedPlanID }
     }
 
+    /// A named run of consecutive projects sharing a group, in display order.
+    private struct PlanSection {
+        let name: String
+        let plans: [Plan]
+    }
+
+    /// `plans` is already sorted by group, so equal-group runs are contiguous and can be sliced
+    /// without re-sorting — which keeps section order identical to the flat query order.
+    private var groupedPlans: [PlanSection] {
+        plans.reduce(into: [PlanSection]()) { sections, plan in
+            if let last = sections.last, last.name == plan.group {
+                sections[sections.count - 1] = PlanSection(name: last.name, plans: last.plans + [plan])
+            } else {
+                sections.append(PlanSection(name: plan.group, plans: [plan]))
+            }
+        }
+    }
+
+    private func planRows(in section: PlanSection) -> some View {
+        ForEach(section.plans) { plan in
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(plan.title.isEmpty ? "Untitled Plan" : plan.title)
+                    Text("\(plan.tasks.count) task\(plan.tasks.count == 1 ? "" : "s")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } icon: {
+                Image(systemName: plan.icon)
+            }
+            .tag(plan.id)
+            .contextMenu {
+                Button {
+                    renameText = plan.title
+                    renamingPlan = plan
+                } label: {
+                    Label("Rename…", systemImage: "pencil")
+                }
+                groupMenu(for: plan)
+                Button(role: .destructive) {
+                    deletePlan(plan)
+                } label: {
+                    Label("Delete Project", systemImage: "trash")
+                }
+            }
+        }
+        .onMove { source, destination in move(in: section, from: source, to: destination) }
+    }
+
+    /// Reorders within a single group. `.onMove` offsets are relative to the section's own array, so
+    /// the move is applied to that slice and the *whole* display order is then handed to the store —
+    /// passing the raw offsets against `plans` would scramble the other groups.
+    private func move(in section: PlanSection, from source: IndexSet, to destination: Int) {
+        var reorderedSection = section.plans
+        reorderedSection.move(fromOffsets: source, toOffset: destination)
+        let reordered = groupedPlans.flatMap { $0.name == section.name ? reorderedSection : $0.plans }
+        store.reorderPlans(reordered)
+    }
+
     var body: some View {
         NavigationSplitView {
             List(selection: $selectedPlanID) {
-                ForEach(plans) { plan in
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(plan.title.isEmpty ? "Untitled Plan" : plan.title)
-                            Text("\(plan.tasks.count) task\(plan.tasks.count == 1 ? "" : "s")")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    } icon: {
-                        Image(systemName: plan.icon)
-                    }
-                    .tag(plan.id)
-                    .contextMenu {
-                        Button {
-                            renameText = plan.title
-                            renamingPlan = plan
-                        } label: {
-                            Label("Rename…", systemImage: "pencil")
-                        }
-                        Button(role: .destructive) {
-                            deletePlan(plan)
-                        } label: {
-                            Label("Delete Project", systemImage: "trash")
+                ForEach(groupedPlans, id: \.name) { section in
+                    Section {
+                        planRows(in: section)
+                    } header: {
+                        // The ungrouped section leads and stays unlabelled, so projects look the
+                        // same as before until the user actually starts grouping things.
+                        if !section.name.isEmpty {
+                            Text(section.name)
                         }
                     }
-                }
-                .onMove { source, destination in
-                    var reordered = plans
-                    reordered.move(fromOffsets: source, toOffset: destination)
-                    store.reorderPlans(reordered)
                 }
             }
             .frame(minWidth: 200)
@@ -114,6 +155,56 @@ struct ProjectManagerView: View {
             Button("Save") { commitRename() }
             Button("Cancel", role: .cancel) { renamingPlan = nil }
         }
+        .alert("New Group", isPresented: newGroupPresented) {
+            TextField("Group name", text: $newGroupText)
+            Button("Move") { commitNewGroup() }
+            Button("Cancel", role: .cancel) { groupingPlan = nil }
+        } message: {
+            Text("Projects sharing a group name are listed together.")
+        }
+    }
+
+    /// "Move to Group" submenu: every existing group, plus ungrouped and a new-group escape hatch.
+    @ViewBuilder
+    private func groupMenu(for plan: Plan) -> some View {
+        Menu {
+            Button {
+                store.setGroup("", for: plan)
+            } label: {
+                if plan.group.isEmpty { Label("Ungrouped", systemImage: "checkmark") } else { Text("Ungrouped") }
+            }
+            let groups = store.planGroups()
+            if !groups.isEmpty {
+                Divider()
+                ForEach(groups, id: \.self) { group in
+                    Button {
+                        store.setGroup(group, for: plan)
+                    } label: {
+                        if plan.group == group { Label(group, systemImage: "checkmark") } else { Text(group) }
+                    }
+                }
+            }
+            Divider()
+            Button("New Group…") {
+                newGroupText = ""
+                groupingPlan = plan
+            }
+        } label: {
+            Label("Move to Group", systemImage: "folder")
+        }
+    }
+
+    private var newGroupPresented: Binding<Bool> {
+        Binding(
+            get: { groupingPlan != nil },
+            set: { if !$0 { groupingPlan = nil } }
+        )
+    }
+
+    private func commitNewGroup() {
+        guard let plan = groupingPlan else { return }
+        store.setGroup(newGroupText, for: plan)
+        groupingPlan = nil
     }
 
     private var renamePresented: Binding<Bool> {
@@ -167,6 +258,16 @@ struct ProjectManagerView: View {
                     }
                 }
                 .padding(.vertical, 4)
+            }
+
+            Section("Group") {
+                // `.id` rebuilds the field (reseeding its draft) when a different project is
+                // selected, so the editor never shows a stale group name.
+                GroupField(plan: plan) { store.setGroup($0, for: plan) }
+                    .id(plan.id)
+                Text("Projects sharing a group name are listed together in the sidebar and here.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Description") {
@@ -318,5 +419,36 @@ struct ProjectManagerView: View {
                 store.save()
             }
         )
+    }
+}
+
+/// The group-name field in the project editor.
+///
+/// Edits are held in a local draft and committed on submit or when focus leaves, rather than on
+/// every keystroke: committing live would re-sort the project list (and reassign the project's sort
+/// order) after each character typed.
+private struct GroupField: View {
+
+    let plan: Plan
+    let commit: (String) -> Void
+
+    @State private var draft: String
+    @FocusState private var isFocused: Bool
+
+    init(plan: Plan, commit: @escaping (String) -> Void) {
+        self.plan = plan
+        self.commit = commit
+        _draft = State(initialValue: plan.group)
+    }
+
+    var body: some View {
+        TextField("Group", text: $draft, prompt: Text("Ungrouped"))
+            .labelsHidden()
+            .textFieldStyle(.roundedBorder)
+            .focused($isFocused)
+            .onSubmit { commit(draft) }
+            .onChange(of: isFocused) { _, focused in
+                if !focused { commit(draft) }
+            }
     }
 }

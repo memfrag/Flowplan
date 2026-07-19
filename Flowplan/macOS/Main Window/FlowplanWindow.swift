@@ -10,7 +10,7 @@ import SwiftData
 struct FlowplanWindow: View {
 
     @Environment(PlanStore.self) private var store
-    @Query(sort: [SortDescriptor(\Plan.sortOrder), SortDescriptor(\Plan.createdAt)]) private var plans: [Plan]
+    @Query(sort: Plan.displayOrder) private var plans: [Plan]
 
     @State private var viewModel = PlanViewModel()
 

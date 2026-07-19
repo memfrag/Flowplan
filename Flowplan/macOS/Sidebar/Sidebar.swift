@@ -12,7 +12,7 @@ struct Sidebar: View {
     @Environment(PlanStore.self) private var store
     @Environment(MCPServerManager.self) private var mcpServerManager
     @Environment(\.openWindow) private var openWindow
-    @Query(sort: [SortDescriptor(\Plan.sortOrder), SortDescriptor(\Plan.createdAt)]) private var plans: [Plan]
+    @Query(sort: Plan.displayOrder) private var plans: [Plan]
 
     @State private var selection: SidebarSelection? = .mode(.graph)
     @State private var isInspectorPresented: Bool = true
@@ -100,14 +100,37 @@ struct Sidebar: View {
 
     private var planPicker: some View {
         Picker("Project", selection: planSelectionBinding) {
-            ForEach(plans) { plan in
-                Label(plan.title.isEmpty ? "Untitled Plan" : plan.title, systemImage: plan.icon)
-                    .tag(plan.id as UUID?)
+            // `plans` is sorted by group, so equal-group runs are contiguous; ungrouped projects
+            // come first and stay unlabelled.
+            ForEach(planGroups, id: \.name) { group in
+                if group.name.isEmpty {
+                    planPickerRows(group.plans)
+                } else {
+                    Section(group.name) { planPickerRows(group.plans) }
+                }
             }
         }
         .labelsHidden()
         .pickerStyle(.menu)
         .frame(maxWidth: .infinity)
+    }
+
+    private func planPickerRows(_ plans: [Plan]) -> some View {
+        ForEach(plans) { plan in
+            Label(plan.title.isEmpty ? "Untitled Plan" : plan.title, systemImage: plan.icon)
+                .tag(plan.id as UUID?)
+        }
+    }
+
+    /// Consecutive runs of projects sharing a group, in the query's display order.
+    private var planGroups: [(name: String, plans: [Plan])] {
+        plans.reduce(into: [(name: String, plans: [Plan])]()) { groups, plan in
+            if let last = groups.last, last.name == plan.group {
+                groups[groups.count - 1].plans.append(plan)
+            } else {
+                groups.append((name: plan.group, plans: [plan]))
+            }
+        }
     }
 
     private var planSelectionBinding: Binding<UUID?> {
