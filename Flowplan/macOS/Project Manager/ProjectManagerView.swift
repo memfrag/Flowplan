@@ -263,8 +263,10 @@ struct ProjectManagerView: View {
             Section("Group") {
                 // `.id` rebuilds the field (reseeding its draft) when a different project is
                 // selected, so the editor never shows a stale group name.
-                GroupField(plan: plan) { store.setGroup($0, for: plan) }
-                    .id(plan.id)
+                GroupField(plan: plan, existingGroups: store.planGroups()) {
+                    store.setGroup($0, for: plan)
+                }
+                .id(plan.id)
                 Text("Projects sharing a group name are listed together in the sidebar and here.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -422,33 +424,34 @@ struct ProjectManagerView: View {
     }
 }
 
-/// The group-name field in the project editor.
+/// The group-name field in the project editor: a combo box that completes against the groups already
+/// in use, while still accepting a brand new name.
 ///
-/// Edits are held in a local draft and committed on submit or when focus leaves, rather than on
-/// every keystroke: committing live would re-sort the project list (and reassign the project's sort
-/// order) after each character typed.
+/// Edits are held in a local draft and only committed once the value settles (picked from the list,
+/// or editing finished). Committing on every keystroke would re-sort the project list — and reassign
+/// the project's sort order — after each character typed.
 private struct GroupField: View {
 
     let plan: Plan
+    let existingGroups: [String]
     let commit: (String) -> Void
 
     @State private var draft: String
-    @FocusState private var isFocused: Bool
 
-    init(plan: Plan, commit: @escaping (String) -> Void) {
+    init(plan: Plan, existingGroups: [String], commit: @escaping (String) -> Void) {
         self.plan = plan
+        self.existingGroups = existingGroups
         self.commit = commit
         _draft = State(initialValue: plan.group)
     }
 
     var body: some View {
-        TextField("Group", text: $draft, prompt: Text("Ungrouped"))
-            .labelsHidden()
-            .textFieldStyle(.roundedBorder)
-            .focused($isFocused)
-            .onSubmit { commit(draft) }
-            .onChange(of: isFocused) { _, focused in
-                if !focused { commit(draft) }
-            }
+        ComboBoxField(
+            text: $draft,
+            placeholder: "Ungrouped",
+            completions: existingGroups,
+            onCommit: commit
+        )
+        .frame(height: 22)
     }
 }
