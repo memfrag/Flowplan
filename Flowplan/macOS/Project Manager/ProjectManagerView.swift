@@ -149,7 +149,10 @@ struct ProjectManagerView: View {
                 )
             }
         }
-        .onAppear { if selectedPlanID == nil { selectedPlanID = plans.first?.id } }
+        // Open with nothing selected. The window is a single `Window` scene, so SwiftUI can keep this
+        // view's state alive after it's closed — clearing on appear (rather than just not
+        // auto-selecting) makes reopening land on the empty state too.
+        .onAppear { selectedPlanID = nil }
         .alert("Rename Project", isPresented: renamePresented) {
             TextField("Project name", text: $renameText)
             Button("Save") { commitRename() }
