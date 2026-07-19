@@ -21,12 +21,30 @@ The script fails if these are missing; tell the user rather than trying to creat
 - **Clean tree on `main`**: `git status --short` must be empty. Commit/stash anything pending first.
 - **Release build is green** (catches errors before the slow notarize):
   `xcodebuild -project Flowplan.xcodeproj -scheme "Flowplan (Release)" -destination 'platform=macOS' build`
-- **CloudKit schema check (critical).** If any `@Model` *stored property* was added since the last
-  release, the CloudKit **Production** schema must be promoted first (CloudKit Console → deploy
-  Development→Production) or the new field silently won't sync. Check:
-  `git diff --stat <lastTag>..HEAD -- '*/Models/*.swift'` and scan for new `public var`. If there are
-  new stored properties, stop and tell the user to deploy the schema before shipping. (See the project
-  memory on CloudKit schema rules.)
+- **CloudKit schema check (critical).** SwiftData mirrors to CloudKit, and a new `@Model` stored
+  property exists only in the Development schema until it's promoted to Production. Ship without
+  promoting and the field silently doesn't sync — no error, it just never reaches other devices.
+  Run:
+
+  ```
+  ./Scripts/check-cloudkit-schema.sh     # exit 0 = up to date, 2 = promotion needed
+  ```
+
+  It diffs the live Development and Production schemas, so it catches drift from *any* release, not
+  just the current diff. (That matters: `CD_sortOrder` sat unpromoted for several releases — project
+  reordering never synced — and a `git diff` against the last tag would never have found it.)
+
+  If it exits 2, **stop and tell the user to promote before shipping.** Two things to pass on:
+  - The Development schema only updates when a build containing the new properties has actually
+    **run** against the development environment (the Debug build). Building alone does nothing. If a
+    just-added property is missing from the diff, that's why — run the Debug app, then re-check.
+  - Promotion is manual, in the CloudKit Console (Schema → Deploy Schema Changes…). `cktool` cannot
+    do it: `import-schema` and `validate-schema` both reject the production environment with
+    `endpoint not applicable in the environment 'production'`. Don't try to script around this.
+
+  The check needs a CloudKit management token (`xcrun cktool save-token --type management`, which
+  requires a real terminal — it can't prompt from a non-interactive shell). Tokens expire; on an auth
+  failure, tell the user to mint a new one. (See the project memory on CloudKit schema rules.)
 
 ## 2. Version + notes
 
@@ -57,8 +75,12 @@ Invoke it via the Bash tool with:
 ## 4. Watch & report
 
 - Read the log. Success ends with `==> Done! Released Flowplan <X.Y.Z>` (exit 0).
-- If the log stalls, a macOS keychain dialog is probably blocking a signing/notary/Sparkle step — tell
-  the user to click **Always Allow**.
+- **A long pause at "Submitting for notarization" is normal — it's Apple's queue, not a failure.** It
+  can sit there for many minutes with no output. Before suggesting anything drastic, check the process
+  is alive: `ps aux | grep notarytool`. If it's running, it's working; say so and wait. Don't kill and
+  retry a healthy run — that throws away queue position and re-uploads for nothing.
+- If the log stalls with no `notarytool` process, a macOS keychain dialog is probably blocking a
+  signing/notary/Sparkle step — tell the user to click **Always Allow**.
 - On success, report the release URL `https://github.com/memfrag/Flowplan/releases/tag/<X.Y.Z>` and that
   the appcast was updated (existing users will get the update offer).
 
