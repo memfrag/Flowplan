@@ -3,6 +3,15 @@
     <channel>
         <title>Flowplan</title>
         <item>
+            <title>1.0.10</title>
+            <pubDate>Sun, 19 Jul 2026 16:13:40 +0200</pubDate>
+            <sparkle:version>1.0.10</sparkle:version>
+            <sparkle:shortVersionString>1.0.10</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/memfrag/Flowplan/releases/download/1.0.10/Flowplan-1.0.10.dmg" length="8467107" type="application/octet-stream" sparkle:edSignature="3ZmPFCZAxK9Hc1YL6/8rXFaGvN/eEVpNA2C3xibWrHRdpD1/bDJ50L0lVJXZGd9QgmNGgcvf1K2NRmysVL1/Cg=="/>
+        </item>
+        <item>
             <title>1.0.9</title>
             <pubDate>Sun, 19 Jul 2026 15:40:53 +0200</pubDate>
             <sparkle:version>1.0.9</sparkle:version>
@@ -19,15 +28,6 @@
             <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
             <enclosure url="https://github.com/memfrag/Flowplan/releases/download/1.0.8/Flowplan-1.0.8.dmg" length="8442293" type="application/octet-stream" sparkle:edSignature="3PPX/4ZUKD5mc88ogI38eied87/16LbHBmVn5ZRUaD0ANb2GmHSE+quSUWEdZhuME2B60eNJ6SbbHi4vFkByAQ=="/>
-        </item>
-        <item>
-            <title>1.0.7</title>
-            <pubDate>Sat, 18 Jul 2026 21:02:47 +0200</pubDate>
-            <sparkle:version>1.0.7</sparkle:version>
-            <sparkle:shortVersionString>1.0.7</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/memfrag/Flowplan/releases/download/1.0.7/Flowplan-1.0.7.dmg" length="8441958" type="application/octet-stream" sparkle:edSignature="zZapLTzw+wbjaVmjYZdok9Ce4j2eL9dv3WSXi+tfbMaN4Psi4PAhjM3dHVTR0bv9Rt9slo8YP2ppSvPqD9wiDw=="/>
         </item>
     </channel>
 </rss>
