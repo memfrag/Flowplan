@@ -10,12 +10,17 @@ nonisolated public enum DependencyValidationError: Error, Equatable, Sendable {
     case duplicate
     case cycle
 
+    /// The project was deleted underneath the editor — typically a deletion synced from another
+    /// device — so there is nothing left to add the dependency to.
+    case planUnavailable
+
     /// A user-facing title for an alert (spec §16).
     public var title: String {
         switch self {
         case .selfDependency: "A task cannot depend on itself."
         case .duplicate: "That dependency already exists."
         case .cycle: "Cannot create dependency"
+        case .planUnavailable: "This project is no longer available"
         }
     }
 
@@ -25,6 +30,7 @@ nonisolated public enum DependencyValidationError: Error, Equatable, Sendable {
         case .selfDependency: "Choose a different prerequisite task."
         case .duplicate: "These two tasks are already connected."
         case .cycle: "This dependency would create a cycle."
+        case .planUnavailable: "It was deleted, possibly on another device."
         }
     }
 }

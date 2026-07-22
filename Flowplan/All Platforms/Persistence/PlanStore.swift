@@ -22,6 +22,28 @@ public final class PlanStore {
         self.modelContext = modelContext
     }
 
+    // MARK: - Liveness
+
+    /// Whether `plan` still has a row in the store.
+    ///
+    /// A project deleted on another device arrives as a CloudKit import that removes the row while
+    /// the UI is still holding the object. Writing a relationship through that dangling reference
+    /// makes CoreData try to fault in a row that no longer exists, which throws an *uncatchable*
+    /// ObjC exception and aborts the process.
+    ///
+    /// Callers that hold a plan across time — chiefly ``PlanViewModel``, which keeps the active
+    /// project for the life of the window — must check this before mutating through it. Callers that
+    /// fetch a plan immediately before use (the MCP service, import) can't go stale and don't.
+    ///
+    /// Deliberately fetches by ``PersistentModel/persistentModelID``: reading a normal property
+    /// (`plan.id`) would itself fault the object and hit the very crash this guards against.
+    public func isLive(_ plan: Plan) -> Bool {
+        let id = plan.persistentModelID
+        var descriptor = FetchDescriptor<Plan>(predicate: #Predicate { $0.persistentModelID == id })
+        descriptor.fetchLimit = 1
+        return ((try? modelContext.fetchCount(descriptor)) ?? 0) > 0
+    }
+
     // MARK: - Plans
 
     public func allPlans() -> [Plan] {
@@ -122,8 +144,9 @@ public final class PlanStore {
     @discardableResult
     public func createTask(in plan: Plan, title: String = "New Task", at position: CGPoint) -> PlanTask {
         let task = PlanTask(number: nextTaskNumber(in: plan), title: title, position: position)
+        // Only the to-one side is written — SwiftData maintains the inverse. Appending to
+        // `plan.tasks` as well would re-add the same task and rewrite the whole to-many.
         task.plan = plan
-        plan.tasks.append(task)
         plan.touch()
         save()
         return task
@@ -190,7 +213,6 @@ public final class PlanStore {
             position: (task.position ?? CGPoint(x: 200, y: 200)).applying(.init(translationX: 32, y: 32))
         )
         copy.plan = task.plan
-        task.plan?.tasks.append(copy)
         task.plan?.touch()
         save()
         return copy
@@ -246,7 +268,6 @@ public final class PlanStore {
     public func addComment(_ text: String, author: String, to task: PlanTask) -> TaskComment {
         let comment = TaskComment(author: author, text: text)
         comment.task = task
-        task.comments.append(comment)
         task.touch()
         task.plan?.touch()
         save()
@@ -272,10 +293,10 @@ public final class PlanStore {
     /// ``DependencyValidationError`` (spec §5.3).
     @discardableResult
     public func createDependency(in plan: Plan, from prerequisite: PlanTask, to dependent: PlanTask) throws -> TaskDependency {
+        guard isLive(plan) else { throw DependencyValidationError.planUnavailable }
         try plan.graph.validateNewDependency(from: prerequisite.id, to: dependent.id)
         let dependency = TaskDependency(prerequisiteTaskID: prerequisite.id, dependentTaskID: dependent.id)
         dependency.plan = plan
-        plan.dependencies.append(dependency)
         plan.touch()
         save()
         return dependency

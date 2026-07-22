@@ -306,10 +306,26 @@ public final class PlanViewModel {
     @discardableResult
     public func createTask(at position: CGPoint) -> PlanTask? {
         guard let store, let plan else { return nil }
+        guard store.isLive(plan) else {
+            presentDeletedPlanAlert()
+            return nil
+        }
         let task = store.createTask(in: plan, at: position)
         selectTask(task.id)
         editingTaskID = task.id
         return task
+    }
+
+    /// Recovers from acting on a project that was deleted underneath us (typically a deletion synced
+    /// from another device): drop the stale reference so `ensureActivePlan` can pick a live project,
+    /// and explain why the action did nothing.
+    private func presentDeletedPlanAlert() {
+        plan = nil
+        clearSelection()
+        activeAlert = PlanAlert(
+            title: "This project is no longer available",
+            message: "It was deleted, possibly on another device."
+        )
     }
 
     /// Creates a task at the centre of the current graph viewport (used by the New Task menu item).
@@ -378,6 +394,7 @@ public final class PlanViewModel {
     /// Permanently deletes all Closed tasks in the active plan (after confirmation).
     public func deleteClosedTasks() {
         guard let store, let plan else { return }
+        guard store.isLive(plan) else { return presentDeletedPlanAlert() }
         store.deleteClosedTasks(in: plan)
         clearSelection()
     }
@@ -488,6 +505,8 @@ public final class PlanViewModel {
             let unlocked = unlockedByCompleting(prerequisite)
             selectDependency(dependency.id)
             _ = unlocked
+        } catch DependencyValidationError.planUnavailable {
+            presentDeletedPlanAlert()
         } catch let error as DependencyValidationError {
             activeAlert = PlanAlert(title: error.title, message: error.message)
         } catch {
