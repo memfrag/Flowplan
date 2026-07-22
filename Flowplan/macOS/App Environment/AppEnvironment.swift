@@ -78,7 +78,8 @@ extension AppEnvironment {
                 ?? fatalContainer(schema: schema)
         }
 
-        let cloudConfiguration = ModelConfiguration(schema: schema, cloudKitDatabase: .automatic)
+        let url = storeURL()
+        let cloudConfiguration = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .automatic)
         do {
             let container = try ModelContainer(for: schema, configurations: [cloudConfiguration])
             Self.log.info("Model container created with CloudKit sync enabled.")
@@ -90,9 +91,24 @@ extension AppEnvironment {
         }
 
         // CloudKit unavailable — fall back to a local store.
-        let localConfiguration = ModelConfiguration(schema: schema, cloudKitDatabase: .none)
+        let localConfiguration = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
         return (try? ModelContainer(for: schema, configurations: [localConfiguration]))
             ?? fatalContainer(schema: schema)
+    }
+
+    /// The on-disk store location, kept in an app-specific subdirectory.
+    ///
+    /// This must stay explicit. `ModelConfiguration` without a URL writes to
+    /// `Application Support/default.store` — a filename that is *not* namespaced by bundle
+    /// identifier. A sandboxed app gets away with it because its Application Support lives inside its
+    /// container; an unsandboxed one (which Flowplan is) writes to the user-wide
+    /// `~/Library/Application Support`, where every unsandboxed SwiftData app collides on the same
+    /// file. Two apps with different schemas then migrate that file back and forth, each dropping the
+    /// other's entities, which strands live objects on rows that no longer exist.
+    private static func storeURL() -> URL {
+        let directory = URL.applicationSupportDirectory.appending(path: "Flowplan", directoryHint: .isDirectory)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory.appending(path: "Flowplan.store")
     }
 
     private static let log = Logger(subsystem: "io.apparata.Flowplan", category: "ModelContainer")
